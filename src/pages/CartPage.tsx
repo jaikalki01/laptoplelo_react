@@ -44,32 +44,35 @@ const CartPage = () => {
   const total = subtotal + tax + shipping;
 
   // Apply coupon logic
- const applyCoupon = async () => {
-  if (!couponCode) {
-    setError('Please enter a coupon code');
-    return;
-  }
+  const applyCoupon = async () => {
+    if (!couponCode) {
+      setError('Please enter a coupon code');
+      return;
+    }
 
-  try {
-    const response = await fetch(`${BASE_URL}/coupon/${couponCode}?total=${total}`);
-    if (!response.ok) throw new Error('Invalid or expired coupon');
+    try {
+      // Call your API to validate the coupon
+      const response = await fetch(`${BASE_URL}/coupon/${couponCode}?total=${subtotal}`);
+      if (!response.ok) {
+        throw new Error('Invalid or expired coupon');
+      }
 
-    const couponData = await response.json();
+      const couponData = await response.json();
 
-    const discountAmount =
-      couponData.discount_type === 'percentage'
-        ? (total * couponData.discount_value) / 100
-        : couponData.discount_value;
+      // Calculate the discount based on coupon type
+      const discountAmount =
+        couponData.discount_type === 'percentage'
+          ? (subtotal * couponData.discount_value) / 100
+          : couponData.discount_value;
 
-    const final = Math.max(0, total - discountAmount);
-    setDiscount(discountAmount);
-    setFinalTotal(final);
-    setError('');
-  } catch (err: any) {
-    setError(err.message || 'Failed to apply coupon');
-  }
-};
-
+      // Update discount and final total
+      setDiscount(discountAmount);
+      setFinalTotal(total - discountAmount);
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
 
   const fetchCartAndProducts = async () => {
@@ -144,7 +147,7 @@ const CartPage = () => {
 
       const token = localStorage.getItem("token"); // or wherever you store the JWT
 
-      const response = await fetch(`${BASE_URL}/cart/`, {
+      const response = await fetch(`${BASE_URL}1/cart/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

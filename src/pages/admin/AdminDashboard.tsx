@@ -49,7 +49,7 @@ const AdminDashboard = ({ children }: AdminDashboardProps) => {
     { name: "User Management", icon: <Users size={20} />, path: "/admin/users" },
     { name: "Product Management", icon: <Package size={20} />, path: "/admin/products" },
     { name: "Coupon Management", icon: <Percent size={20} />, path: "/admin/coupons" },
-  
+    { name: "Offer Management", icon: <Tag size={20} />, path: "/admin/offers" },
     { name: "Sales Transactions", icon: <ShoppingCart size={20} />, path: "/admin/transactions" },
     { name: "Rental Management", icon: <Clock size={20} />, path: "/admin/rentals" },
     { name: "Reports", icon: <FileText size={20} />, path: "/admin/reports" },
@@ -225,13 +225,14 @@ const AdminDashboard = ({ children }: AdminDashboardProps) => {
               {window.location.pathname === "/admin" ? "Dashboard" : 
                menuItems.find(item => item.path === window.location.pathname)?.name || "Dashboard"}
             </h1>
-           <div className="flex items-center">
-  <span className="text-sm mr-4">Welcome, {user?.name}</span>
-  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg font-semibold uppercase">
-    {user?.name?.charAt(0)}
-  </div>
-</div>
-
+            <div className="flex items-center">
+              <span className="text-sm mr-4">Welcome, {user?.name}</span>
+              <img 
+                src="https://randomuser.me/api/portraits/men/1.jpg" 
+                alt="Admin" 
+                className="w-10 h-10 rounded-full"
+              />
+            </div>
           </div>
         </header>
 
