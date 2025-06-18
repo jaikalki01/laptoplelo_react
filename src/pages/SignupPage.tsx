@@ -17,7 +17,6 @@ import { Eye, EyeOff } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { users } from "@/data/users";
 
-
 const SignupPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
