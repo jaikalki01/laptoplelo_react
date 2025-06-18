@@ -22,7 +22,7 @@ import AdminDashboard from "@/pages/admin/AdminDashboard";
 import UserManagement from "@/pages/admin/UserManagement";
 import ProductManagement from "@/pages/admin/ProductManagement";
 import CouponManagement from "@/pages/admin/CouponManagement";
-import OfferManagement from "@/pages/admin/OfferManagement";
+
 import TransactionManagement from "@/pages/admin/TransactionManagement";
 import RentManagement from "@/pages/admin/RentManagement";
 import ReportsPage from "@/pages/admin/ReportsPage";
@@ -207,7 +207,7 @@ const App = () => (
                   <Route path="/admin/contacts" element={<ContactList />} />
                   <Route path="/admin/add-product" element={<Adminaddproduct />} />
                   <Route path="/admin/coupons" element={<CouponManagement />} />
-                  <Route path="/admin/offers" element={<OfferManagement />} />
+
                   <Route path="/admin/transactions" element={<TransactionManagement />} />
                   <Route path="/admin/rentals" element={<RentManagement />} />
                   <Route path="/admin/reports" element={<ReportsPage />} />

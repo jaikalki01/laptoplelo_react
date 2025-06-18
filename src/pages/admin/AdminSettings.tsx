@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
@@ -8,7 +7,8 @@ import {
   Bell, 
   Mail,
   Shield,
-  Save
+  Save,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import AdminDashboard from "./AdminDashboard";
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001";
 
 const AdminSettings = () => {
   const { user } = useApp();
@@ -38,6 +40,61 @@ const AdminSettings = () => {
     emailNotifications: true,
     browserNotifications: false
   });
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  const validatePassword = (password: string) => {
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    return password.length >= 8 && hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar;
+  };
+
+const changePasswordApi = async ({
+  currentPassword,
+  newPassword,
+}: {
+  currentPassword: string;
+  newPassword: string;
+}) => {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    throw new Error("No authentication token found. Please log in again.");
+  }
+
+  try {
+    const response = await fetch(`${BASE_URL}/users/change-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
+    });
+
+    if (response.status === 401) {
+      // Token is invalid or expired
+      localStorage.removeItem("token");
+      navigate("/login");
+      throw new Error("Session expired. Please log in again.");
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || "Password change failed.");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Password change error:", error);
+    throw error;
+  }
+};
 
   // If user is not admin, redirect to login
   if (!user || user.role !== 'admin') {
@@ -60,42 +117,51 @@ const AdminSettings = () => {
     }));
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validation
+const handlePasswordSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
+
+  try {
+    // Validate passwords match
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "New passwords don't match",
-        variant: "destructive"
-      });
-      return;
+      throw new Error("Passwords do not match.");
     }
-    
-    if (passwordForm.newPassword.length < 8) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 8 characters long",
-        variant: "destructive"
-      });
-      return;
+
+    // Validate password strength
+    if (!validatePassword(passwordForm.newPassword)) {
+      throw new Error(
+        "Password must be 8+ characters with uppercase, lowercase, number, and special character."
+      );
     }
-    
-    // In a real app, this would make an API call
-    toast({
-      title: "Password updated",
-      description: "Your password has been updated successfully",
+
+    // Call API
+    await changePasswordApi({
+      currentPassword: passwordForm.currentPassword,
+      newPassword: passwordForm.newPassword,
     });
-    
+
+    // Success
+    toast({
+      title: "Success",
+      description: "Password updated successfully!",
+    });
+
     // Reset form
     setPasswordForm({
       currentPassword: "",
       newPassword: "",
-      confirmPassword: ""
+      confirmPassword: "",
     });
-  };
-
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description: error.message,
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
   const handleNotificationSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -174,8 +240,18 @@ const AdminSettings = () => {
                       </div>
                     </div>
                     
-                    <Button type="submit" className="w-full sm:w-auto">
-                      <Save className="mr-2 h-4 w-4" /> Update Password
+                    <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Updating...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Update Password
+                        </>
+                      )}
                     </Button>
                   </form>
                 </CardContent>
