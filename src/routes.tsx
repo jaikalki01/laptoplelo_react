@@ -6,6 +6,7 @@ const apiRoutes = {
     login: `${BASE_URL}/auth/login`,
     register: `${BASE_URL}/auth/register`,
     logout: `${BASE_URL}/auth/logout`,
+   
   },
   users: {
     getAll: `${BASE_URL}/users`,
@@ -20,6 +21,12 @@ const apiRoutes = {
     update: (id) => `${BASE_URL}/products/${id}`,
     delete: (id) => `${BASE_URL}/products/${id}`,
   },
+};
+
+
+
+export const endpoints = {
+  changePassword: `${BASE_URL}/users/change-password`,
 };
 
 export default apiRoutes;

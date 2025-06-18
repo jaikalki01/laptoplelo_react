@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { Eye, EyeOff } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { users } from "@/data/users";
-import ReCAPTCHA from "react-google-recaptcha";
 
 
 const SignupPage = () => {
@@ -33,12 +31,6 @@ const SignupPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const SITE_KEY = "your-new-site-key";
-  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
-
-  const handleCaptchaChange = (token: string | null) => {
-    setRecaptchaToken(token);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,15 +62,6 @@ const SignupPage = () => {
       return;
     }
 
-    if (!recaptchaToken) {
-      toast({
-        title: "Error",
-        description: "Please complete the CAPTCHA",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -93,7 +76,6 @@ const SignupPage = () => {
           password,
           role: "user",
           kyc_verified: false,
-          recaptcha_token: recaptchaToken, // 👈 send it to backend
         }),
       });
 
@@ -189,10 +171,6 @@ const SignupPage = () => {
                 </button>
               </div>
             </div>
-            <ReCAPTCHA
-              sitekey={SITE_KEY}
-              onChange={handleCaptchaChange}
-            />
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="terms"
