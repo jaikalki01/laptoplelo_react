@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useRef, ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import { 
@@ -9,7 +8,8 @@ import {
   Clock, 
   AlertCircle,
   Trash2,
-  Info
+  Info,
+  Image
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,10 +37,15 @@ const UserKYC = () => {
   const [kycForm, setKycForm] = useState({
     documentType: "",
     documentNumber: "",
-    uploadedFront: false,
-    uploadedBack: false,
+    frontImage: null as File | null,
+    backImage: null as File | null,
+    frontPreview: "",
+    backPreview: "",
     processing: false
   });
+
+  const frontInputRef = useRef<HTMLInputElement>(null);
+  const backInputRef = useRef<HTMLInputElement>(null);
 
   // If user is not logged in, redirect to login
   if (!user) {
@@ -63,13 +68,50 @@ const UserKYC = () => {
     }));
   };
 
-  const handleFileUpload = (side: 'front' | 'back') => {
-    // In a real app, this would handle file upload
-    setKycForm(prev => ({
-      ...prev,
-      [`uploaded${side === 'front' ? 'Front' : 'Back'}`]: true
-    }));
-    
+  const handleFileChange = (side: 'front' | 'back', e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a JPEG, PNG, or PDF file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Maximum file size is 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Create preview for images
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setKycForm(prev => ({
+          ...prev,
+          [`${side}Image`]: file,
+          [`${side}Preview`]: reader.result as string
+        }));
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setKycForm(prev => ({
+        ...prev,
+        [`${side}Image`]: file,
+        [`${side}Preview`]: "" // No preview for PDFs
+      }));
+    }
+
     toast({
       title: "File uploaded",
       description: `Document ${side} side uploaded successfully`,
@@ -79,8 +121,17 @@ const UserKYC = () => {
   const handleRemoveFile = (side: 'front' | 'back') => {
     setKycForm(prev => ({
       ...prev,
-      [`uploaded${side === 'front' ? 'Front' : 'Back'}`]: false
+      [`${side}Image`]: null,
+      [`${side}Preview`]: ""
     }));
+    
+    // Reset file input
+    if (side === 'front' && frontInputRef.current) {
+      frontInputRef.current.value = "";
+    }
+    if (side === 'back' && backInputRef.current) {
+      backInputRef.current.value = "";
+    }
     
     toast({
       title: "File removed",
@@ -99,7 +150,7 @@ const UserKYC = () => {
       return;
     }
     
-    if (!kycForm.uploadedFront || (kycForm.documentType !== 'passport' && !kycForm.uploadedBack)) {
+    if (!kycForm.frontImage || (kycForm.documentType !== 'passport' && !kycForm.backImage)) {
       toast({
         title: "Error",
         description: "Please upload all required document images",
@@ -218,20 +269,37 @@ const UserKYC = () => {
                     <div className="space-y-2">
                       <Label>Upload Document Front Side</Label>
                       <div className="border rounded-lg p-4">
-                        {kycForm.uploadedFront ? (
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center text-green-600">
-                              <Check size={16} className="mr-1" />
-                              <span>Document front side uploaded</span>
+                        {kycForm.frontImage ? (
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <div className="flex items-center text-green-600">
+                                <Check size={16} className="mr-1" />
+                                <span>Document front side uploaded</span>
+                              </div>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="text-red-600"
+                                onClick={() => handleRemoveFile('front')}
+                              >
+                                <Trash2 size={16} className="mr-1" /> Remove
+                              </Button>
                             </div>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              className="text-red-600"
-                              onClick={() => handleRemoveFile('front')}
-                            >
-                              <Trash2 size={16} className="mr-1" /> Remove
-                            </Button>
+                            {kycForm.frontPreview && (
+                              <div className="mt-2 border rounded-md overflow-hidden">
+                                <img 
+                                  src={kycForm.frontPreview} 
+                                  alt="Document front preview" 
+                                  className="w-full h-auto max-h-40 object-contain"
+                                />
+                              </div>
+                            )}
+                            {!kycForm.frontPreview && (
+                              <div className="flex items-center gap-2 mt-2 text-gray-500">
+                                <Image size={16} />
+                                <span>{kycForm.frontImage.name}</span>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className="flex flex-col items-center p-6 border-2 border-dashed rounded-md">
@@ -240,12 +308,20 @@ const UserKYC = () => {
                               Click to upload or drag and drop
                             </p>
                             <p className="text-xs text-gray-400">
-                              Supported formats: JPEG, PNG, PDF
+                              Supported formats: JPEG, PNG, PDF (Max 5MB)
                             </p>
+                            <input
+                              type="file"
+                              ref={frontInputRef}
+                              onChange={(e) => handleFileChange('front', e)}
+                              accept="image/jpeg,image/png,application/pdf"
+                              className="hidden"
+                              id="front-upload"
+                            />
                             <Button 
                               variant="outline" 
                               className="mt-4"
-                              onClick={() => handleFileUpload('front')}
+                              onClick={() => frontInputRef.current?.click()}
                             >
                               Select File
                             </Button>
@@ -258,20 +334,37 @@ const UserKYC = () => {
                       <div className="space-y-2">
                         <Label>Upload Document Back Side</Label>
                         <div className="border rounded-lg p-4">
-                          {kycForm.uploadedBack ? (
-                            <div className="flex justify-between items-center">
-                              <div className="flex items-center text-green-600">
-                                <Check size={16} className="mr-1" />
-                                <span>Document back side uploaded</span>
+                          {kycForm.backImage ? (
+                            <div className="space-y-3">
+                              <div className="flex justify-between items-center">
+                                <div className="flex items-center text-green-600">
+                                  <Check size={16} className="mr-1" />
+                                  <span>Document back side uploaded</span>
+                                </div>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="text-red-600"
+                                  onClick={() => handleRemoveFile('back')}
+                                >
+                                  <Trash2 size={16} className="mr-1" /> Remove
+                                </Button>
                               </div>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                className="text-red-600"
-                                onClick={() => handleRemoveFile('back')}
-                              >
-                                <Trash2 size={16} className="mr-1" /> Remove
-                              </Button>
+                              {kycForm.backPreview && (
+                                <div className="mt-2 border rounded-md overflow-hidden">
+                                  <img 
+                                    src={kycForm.backPreview} 
+                                    alt="Document back preview" 
+                                    className="w-full h-auto max-h-40 object-contain"
+                                  />
+                                </div>
+                              )}
+                              {!kycForm.backPreview && (
+                                <div className="flex items-center gap-2 mt-2 text-gray-500">
+                                  <Image size={16} />
+                                  <span>{kycForm.backImage.name}</span>
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <div className="flex flex-col items-center p-6 border-2 border-dashed rounded-md">
@@ -280,12 +373,20 @@ const UserKYC = () => {
                                 Click to upload or drag and drop
                               </p>
                               <p className="text-xs text-gray-400">
-                                Supported formats: JPEG, PNG, PDF
+                                Supported formats: JPEG, PNG, PDF (Max 5MB)
                               </p>
+                              <input
+                                type="file"
+                                ref={backInputRef}
+                                onChange={(e) => handleFileChange('back', e)}
+                                accept="image/jpeg,image/png,application/pdf"
+                                className="hidden"
+                                id="back-upload"
+                              />
                               <Button 
                                 variant="outline" 
                                 className="mt-4"
-                                onClick={() => handleFileUpload('back')}
+                                onClick={() => backInputRef.current?.click()}
                               >
                                 Select File
                               </Button>

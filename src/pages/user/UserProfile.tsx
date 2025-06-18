@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import { 
@@ -6,22 +5,78 @@ import {
   Mail, 
   MapPin, 
   Shield,
-  Edit
+  Edit,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
+} from "@/components/ui/tabs";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
 import UserSidebar from "./UserSidebar";
-
+import { useState } from "react";
 const UserProfile = () => {
-  const { user } = useApp();
+  const { user, updateUser } = useApp();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: user?.name || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+  });
 
   // If user is not logged in, redirect to login
   if (!user) {
     navigate('/login');
     return null;
   }
+
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setEditForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      // Call your API to update user
+      await updateUser(editForm);
+      toast({
+        title: "Profile updated successfully",
+        variant: "default",
+      });
+      setIsEditing(false);
+    } catch (error) {
+      toast({
+        title: "Failed to update profile",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -33,9 +88,62 @@ const UserProfile = () => {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle className="text-2xl">My Profile</CardTitle>
-                <Button variant="outline" size="sm" onClick={() => navigate('/user/profile/edit')}>
-                  <Edit size={16} className="mr-2" /> Edit Profile
-                </Button>
+                
+                {/* Edit Profile Dialog */}
+                <Dialog open={isEditing} onOpenChange={setIsEditing}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Edit size={16} className="mr-2" /> Edit Profile
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Edit Profile</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Full Name</Label>
+                        <Input
+                          id="name"
+                          name="name"
+                          value={editForm.name}
+                          onChange={handleEditChange}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          value={editForm.email}
+                          onChange={handleEditChange}
+                           // Typically emails shouldn't be changed
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Phone</Label>
+                        <Input
+                          id="phone"
+                          name="phone"
+                          type="tel"
+                          value={editForm.phone}
+                          onChange={handleEditChange}
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2 pt-4">
+                        <Button 
+                          variant="outline" 
+                          type="button"
+                          onClick={() => setIsEditing(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button type="submit">Save changes</Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </div>
               <CardDescription>Manage your account details and preferences</CardDescription>
             </CardHeader>
@@ -76,16 +184,6 @@ const UserProfile = () => {
                       <h3 className="text-sm font-medium text-gray-500">Phone</h3>
                       <p className="text-lg">{user.phone || "Not provided"}</p>
                     </div>
-                    {/* <div>
-                      <h3 className="text-sm font-medium text-gray-500">KYC Status</h3>
-                      <p className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm ${
-                        user.kycVerified 
-                          ? "bg-green-100 text-green-800" 
-                          : "bg-yellow-100 text-yellow-800"
-                      }`}>
-                        {user.kycVerified ? "Verified" : "Not Verified"}
-                      </p>
-                    </div> */}
                   </div>
                 </div>
               </div>
@@ -109,7 +207,7 @@ const UserProfile = () => {
                 </TabsList>
                 
                 <TabsContent value="default">
-                  {user.addresses.find(addr => addr.isDefault) ? (
+                  {user.addresses?.find(addr => addr.isDefault) ? (
                     <div className="bg-gray-50 p-4 rounded-lg border">
                       <p className="font-medium">{user.name}</p>
                       <p>{user.addresses.find(addr => addr.isDefault)?.street}</p>
@@ -124,7 +222,7 @@ const UserProfile = () => {
                 
                 <TabsContent value="all">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {user.addresses.map((address) => (
+                    {user.addresses?.map((address) => (
                       <div 
                         key={address.id} 
                         className={`p-4 rounded-lg border ${address.isDefault ? 'bg-gray-50 border-primary' : ''}`}

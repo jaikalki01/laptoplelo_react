@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import UserSidebar from "./UserSidebar";
+const BASE_URL = "http://localhost:8001"; // 🔁 Replace with your actual backend URL
 
 const UserPassword = () => {
   const { user } = useApp();
@@ -64,64 +65,86 @@ const UserPassword = () => {
     setPasswordStrength(strength);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validation
-    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "New passwords don't match",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (passwordForm.newPassword.length < 8) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 8 characters long",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (passwordStrength < 3) {
-      toast({
-        title: "Error",
-        description: "Please use a stronger password",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // In a real app, this would make an API call
-    setIsSubmitting(true);
-    
-    setTimeout(() => {
-      toast({
-        title: "Password updated",
-        description: "Your password has been updated successfully",
-      });
-      
-      setPasswordForm({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: ""
-      });
-      
-      setIsSubmitting(false);
-    }, 1500);
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  // Validation
+  if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+    toast({
+      title: "Error",
+      description: "Please fill in all fields",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    toast({
+      title: "Error",
+      description: "New passwords don't match",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  if (passwordForm.newPassword.length < 8) {
+    toast({
+      title: "Error",
+      description: "Password must be at least 8 characters long",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  if (passwordStrength < 3) {
+    toast({
+      title: "Error",
+      description: "Please use a stronger password",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  // 🔥 Submit to backend here
+  setIsSubmitting(true);
+  try {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`${BASE_URL}/users/change-password`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        current_password: passwordForm.currentPassword,
+        new_password: passwordForm.newPassword,
+      }),
+    });
+
+    if (!response.ok) throw new Error("Password change failed");
+    const data = await response.json();
+
+    toast({
+      title: "Success",
+      description: data.message || "Password updated successfully",
+    });
+
+    setPasswordForm({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description: error.message || "Something went wrong",
+      variant: "destructive",
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   return (
     <div className="container mx-auto px-4 py-8">
