@@ -126,7 +126,7 @@ const ProductDetailPage = () => {
       `.jpg`, `.png`, `.jpeg`
     ].flatMap(ext =>
       [1, 2, 3, 4].map(i =>
-        `${BASE_URL}/static/uploaded_images/product_image_${i}_${product.id}${ext}`
+        `${BASE_URL}/static/uploaded_images/${i}_${product.id}${ext}`
       )
     );
 
