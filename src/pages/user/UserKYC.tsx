@@ -1,12 +1,11 @@
-
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
-import { 
-  Shield, 
-  Upload, 
-  Check, 
-  Clock, 
+import {
+  Shield,
+  Upload,
+  Check,
+  Clock,
   AlertCircle,
   Trash2,
   Info
@@ -29,11 +28,11 @@ const UserKYC = () => {
   const { user, updateUser } = useApp();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [kycStatus, setKycStatus] = useState(
     user?.kycVerified ? "verified" : "unverified"
   );
-  
+
   const [kycForm, setKycForm] = useState({
     documentType: "",
     documentNumber: "",
@@ -42,7 +41,10 @@ const UserKYC = () => {
     processing: false
   });
 
-  // If user is not logged in, redirect to login
+  const [files, setFiles] = useState<{ front?: File; back?: File }>({});
+  const frontInputRef = useRef<HTMLInputElement>(null);
+  const backInputRef = useRef<HTMLInputElement>(null);
+
   if (!user) {
     navigate('/login');
     return null;
@@ -63,13 +65,17 @@ const UserKYC = () => {
     }));
   };
 
-  const handleFileUpload = (side: 'front' | 'back') => {
-    // In a real app, this would handle file upload
+  const handleFileUpload = (side: 'front' | 'back', file: File) => {
+    setFiles(prev => ({
+      ...prev,
+      [side]: file
+    }));
+
     setKycForm(prev => ({
       ...prev,
       [`uploaded${side === 'front' ? 'Front' : 'Back'}`]: true
     }));
-    
+
     toast({
       title: "File uploaded",
       description: `Document ${side} side uploaded successfully`,
@@ -77,11 +83,17 @@ const UserKYC = () => {
   };
 
   const handleRemoveFile = (side: 'front' | 'back') => {
+    setFiles(prev => {
+      const updated = { ...prev };
+      delete updated[side];
+      return updated;
+    });
+
     setKycForm(prev => ({
       ...prev,
       [`uploaded${side === 'front' ? 'Front' : 'Back'}`]: false
     }));
-    
+
     toast({
       title: "File removed",
       description: `Document ${side} side removed`,
@@ -89,7 +101,6 @@ const UserKYC = () => {
   };
 
   const handleSubmitKYC = () => {
-    // Validation
     if (!kycForm.documentType || !kycForm.documentNumber) {
       toast({
         title: "Error",
@@ -98,7 +109,7 @@ const UserKYC = () => {
       });
       return;
     }
-    
+
     if (!kycForm.uploadedFront || (kycForm.documentType !== 'passport' && !kycForm.uploadedBack)) {
       toast({
         title: "Error",
@@ -107,29 +118,27 @@ const UserKYC = () => {
       });
       return;
     }
-    
-    // In a real app, this would submit the KYC documents for verification
+
     setKycForm(prev => ({
       ...prev,
       processing: true
     }));
-    
+
     setKycStatus("pending");
-    
+
     toast({
       title: "KYC submitted",
       description: "Your KYC documents have been submitted for verification",
     });
-    
-    // Simulate KYC verification process (would be done by admin in real app)
+
     setTimeout(() => {
       updateUser({
         ...user,
         kycVerified: true
       });
-      
+
       setKycStatus("verified");
-      
+
       toast({
         title: "KYC verified",
         description: "Your KYC documents have been verified successfully",
@@ -141,7 +150,7 @@ const UserKYC = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row gap-6">
         <UserSidebar />
-        
+
         <div className="flex-1">
           <Card className="mb-6">
             <CardHeader>
@@ -181,7 +190,7 @@ const UserKYC = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-4">
                     <div className="grid gap-2">
                       <Label htmlFor="documentType">ID Document Type</Label>
@@ -201,7 +210,7 @@ const UserKYC = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     <div className="grid gap-2">
                       <Label htmlFor="documentNumber">
                         Document Number
@@ -214,15 +223,26 @@ const UserKYC = () => {
                         placeholder="Enter your document number"
                       />
                     </div>
-                    
+
+                    {/* FRONT UPLOAD */}
                     <div className="space-y-2">
                       <Label>Upload Document Front Side</Label>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        className="hidden"
+                        ref={frontInputRef}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileUpload("front", file);
+                        }}
+                      />
                       <div className="border rounded-lg p-4">
                         {kycForm.uploadedFront ? (
                           <div className="flex justify-between items-center">
                             <div className="flex items-center text-green-600">
                               <Check size={16} className="mr-1" />
-                              <span>Document front side uploaded</span>
+                              <span>{files.front?.name || "Document front side uploaded"}</span>
                             </div>
                             <Button 
                               variant="ghost" 
@@ -245,7 +265,7 @@ const UserKYC = () => {
                             <Button 
                               variant="outline" 
                               className="mt-4"
-                              onClick={() => handleFileUpload('front')}
+                              onClick={() => frontInputRef.current?.click()}
                             >
                               Select File
                             </Button>
@@ -253,16 +273,27 @@ const UserKYC = () => {
                         )}
                       </div>
                     </div>
-                    
+
+                    {/* BACK UPLOAD */}
                     {kycForm.documentType !== 'passport' && (
                       <div className="space-y-2">
                         <Label>Upload Document Back Side</Label>
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          className="hidden"
+                          ref={backInputRef}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileUpload("back", file);
+                          }}
+                        />
                         <div className="border rounded-lg p-4">
                           {kycForm.uploadedBack ? (
                             <div className="flex justify-between items-center">
                               <div className="flex items-center text-green-600">
                                 <Check size={16} className="mr-1" />
-                                <span>Document back side uploaded</span>
+                                <span>{files.back?.name || "Document back side uploaded"}</span>
                               </div>
                               <Button 
                                 variant="ghost" 
@@ -285,7 +316,7 @@ const UserKYC = () => {
                               <Button 
                                 variant="outline" 
                                 className="mt-4"
-                                onClick={() => handleFileUpload('back')}
+                                onClick={() => backInputRef.current?.click()}
                               >
                                 Select File
                               </Button>
@@ -294,7 +325,7 @@ const UserKYC = () => {
                         </div>
                       </div>
                     )}
-                    
+
                     <div className="mt-6">
                       <Button 
                         className="w-full md:w-auto"
@@ -315,7 +346,7 @@ const UserKYC = () => {
               )}
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader>
               <CardTitle>KYC Verification FAQ</CardTitle>
@@ -330,7 +361,6 @@ const UserKYC = () => {
                     This helps us maintain security and prevent fraud on our platform.
                   </p>
                 </div>
-                
                 <div>
                   <h3 className="font-medium">Why do I need to verify my identity?</h3>
                   <p className="text-sm text-gray-500 mt-1">
@@ -338,7 +368,6 @@ const UserKYC = () => {
                     This ensures that the person using our service is who they claim to be.
                   </p>
                 </div>
-                
                 <div>
                   <h3 className="font-medium">How long does verification take?</h3>
                   <p className="text-sm text-gray-500 mt-1">
@@ -346,7 +375,6 @@ const UserKYC = () => {
                     your verification is complete.
                   </p>
                 </div>
-                
                 <div>
                   <h3 className="font-medium">Is my data secure?</h3>
                   <p className="text-sm text-gray-500 mt-1">

@@ -104,7 +104,6 @@ const SignupPage = () => {
     }
   };
 
-
   return (
     <div className="container mx-auto px-4 py-6 md:py-12 flex justify-center">
       <Card className="w-full max-w-md">
@@ -171,6 +170,7 @@ const SignupPage = () => {
                 </button>
               </div>
             </div>
+
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="terms"
