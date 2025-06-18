@@ -30,6 +30,7 @@ import Analytics from "@/pages/admin/Analytics";
 import AdminProfile from "@/pages/admin/AdminProfile";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import UserProfile from "@/pages/user/UserProfile";
+import EditProfile from "@/pages/user/EditProfile";
 import UserAddress from "@/pages/user/UserAddress";
 import UserKYC from "@/pages/user/UserKYC";
 import UserPassword from "@/pages/user/UserPassword";
@@ -224,6 +225,16 @@ const App = () => (
                       </MainLayout>
                     }
                   />
+
+                  <Route
+                    path="/user/editprofile"
+                    element={
+                      <MainLayout>
+                        <EditProfile />
+                      </MainLayout>
+                    }
+                  />
+
                   <Route
                     path="/user/address"
                     element={
