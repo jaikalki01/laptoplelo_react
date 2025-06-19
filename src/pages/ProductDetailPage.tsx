@@ -85,12 +85,62 @@ const ProductDetailPage = () => {
   const handleColorSelect = (color: string) => {
     setSelectedColor(color);
     if (!product) return;
-    const image = colorImageMap[color];
-    if (image) {
-      const index = product.images.findIndex((img) => img === image);
-      if (index !== -1) {
-        setSelectedImage(index);
+
+    const possibleUrls = [
+      `.jpg`, `.png`, `.jpeg`
+    ].flatMap(ext =>
+      [1, 2, 3, 4].map(i =>
+        `${BASE_URL}/static/uploaded_images/product_image_${i}_${product.id}${ext}`
+      )
+    );
+
+    const checkImage = url =>
+      new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => resolve(url);
+        img.onerror = () => resolve(null);
+        img.src = url;
+      });
+
+    Promise.all(possibleUrls.map(checkImage)).then(urls => {
+      setImageUrls(urls.filter(Boolean));
+    });
+  }, [product]);
+
+  const fetchCartAndProducts = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('No token found');
+
+      if (!product || !product.id) {
+        console.warn('Product is not loaded yet.');
+        return;
       }
+
+      const cartResponse = await fetch(`${BASE_URL}/cart`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!cartResponse.ok) throw new Error('Failed to fetch cart');
+
+      const cartData = await cartResponse.json();
+      console.log('Raw cart data:', cartData);
+
+      const productId = product.id;
+      const cartItem = cartData.find(item => item.product_id === productId);
+
+      setQuantity(cartItem ? Math.max(1, cartItem.quantity || 0) : 1);
+    } catch (error) {
+      console.error('Error fetching cart:', error);
+    }
+  };
+
+
+  useEffect(() => {
+    if (product?.id) {
+      fetchCartAndProducts();
     }
   };
 
