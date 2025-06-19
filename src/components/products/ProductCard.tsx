@@ -27,7 +27,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
       let found = false;
 
       extensions.forEach(ext => {
-        const url = `${BASE_URL}/static/uploaded_images/${product.id}.${ext}`;
+        const url = `${BASE_URL}/static/uploaded_images/product_image_1_${product.id}.${ext}`;
         const img = new Image();
         img.src = url;
 

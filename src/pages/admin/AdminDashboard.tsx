@@ -1,173 +1,246 @@
 
-import AdminLayout from '@/components/admin/AdminLayout';
-import { useStore } from '@/contexts/StoreContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, ShoppingBag, Tag, TrendingUp } from 'lucide-react';
+import { useState, ReactNode, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useApp } from "@/context/AppContext";
+import { 
+  Users, 
+  Package, 
+  Percent, 
+  Tag, 
+  ShoppingCart, 
+  Clock,
+  FileText,
+  BarChart2,
+  User,
+  Settings,
+  PhoneCall ,
+  Home,
+  LogOut
+} from "lucide-react";
+import { BASE_URL } from "@/routes";
 
-const AdminDashboard = () => {
-  const { state } = useStore();
-  const { products, wishlist } = state;
-  const { users, coupons } = state;
+
+interface AdminDashboardProps {
+  children?: ReactNode;
+}
+
+const AdminDashboard = ({ children }: AdminDashboardProps) => {
+  const { user, logout } = useApp();
+  const navigate = useNavigate();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // If user is not admin, redirect to home
+  if (!user || user.role !== 'admin') {
+    navigate('/login');
+    return null;
+  }
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const menuItems = [
+    { name: "Dashboard", icon: <Home size={20} />, path: "/admin" },
+    { name: "User Management", icon: <Users size={20} />, path: "/admin/users" },
+    { name: "Product Management", icon: <Package size={20} />, path: "/admin/products" },
+    { name: "Coupon Management", icon: <Percent size={20} />, path: "/admin/coupons" },
+    { name: "Offer Management", icon: <Tag size={20} />, path: "/admin/offers" },
+    { name: "Sales Transactions", icon: <ShoppingCart size={20} />, path: "/admin/transactions" },
+    { name: "Rental Management", icon: <Clock size={20} />, path: "/admin/rentals" },
+    { name: "Reports", icon: <FileText size={20} />, path: "/admin/reports" },
+    { name: "Analytics", icon: <BarChart2 size={20} />, path: "/admin/analytics" },
+    { name: "Profile", icon: <User size={20} />, path: "/admin/profile" },
+    { name: "Settings", icon: <Settings size={20} />, path: "/admin/settings" },
+    { name: "Contact", icon: <PhoneCall   size={20} />, path: "/admin/contacts" }
+  ];
+
+  const [stats, setStats] = useState({
+    total_users: 0,
+    products: 0,
+    active_rentals: 0,
+    sales_this_month: "₹0",
+  });
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
   
-  return (
-    <AdminLayout>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-        <p className="text-gray-600">Welcome to the Jokroup admin dashboard</p>
-      </div>
-      
+    fetch(`${BASE_URL}/dashboard/stats`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch stats");
+        return res.json();
+      })
+      .then((data) => setStats(data))
+      .catch((err) => console.error("Error fetching dashboard stats:", err));
+  }, []);
+  
+
+  const dashboardItems = [
+    { title: "Total Users", value: stats.total_users, icon: <Users className="h-8 w-8 text-primary" /> },
+    { title: "Products", value: stats.products, icon: <Package className="h-8 w-8 text-primary" /> },
+    { title: "Active Rentals", value: stats.active_rentals, icon: <Clock className="h-8 w-8 text-primary" /> },
+    { title: "Sales This Month", value: stats.sales_this_month, icon: <ShoppingCart className="h-8 w-8 text-primary" /> },
+  ];
+
+  // Default dashboard content
+  const dashboardContent = (
+
+    
+    <>
+      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
-            <ShoppingBag className="h-4 w-4 text-gray-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{products.length}</div>
-            <p className="text-sm text-gray-500 mt-1">
-              {products.filter(p => p.in_stock  ).length} in stock
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-gray-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{users.length}</div>
-            <p className="text-sm text-gray-500 mt-1">
-              {users.filter(u => u.role === 'user').length} customers
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Coupons</CardTitle>
-            <Tag className="h-4 w-4 text-gray-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {coupons.filter(c => c.active).length}
+        {dashboardItems.map((stat, index) => (
+          <div key={index} className="bg-white rounded-lg shadow p-6 flex items-center">
+            <div className="mr-4">{stat.icon}</div>
+            <div>
+              <h3 className="text-gray-500 text-sm">{stat.title}</h3>
+              <p className="text-2xl font-semibold">{stat.value}</p>
             </div>
-            <p className="text-sm text-gray-500 mt-1">
-              {coupons.length} total coupons
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Wishlisted</CardTitle>
-            <TrendingUp className="h-4 w-4 text-gray-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{wishlist.length}</div>
-            <p className="text-sm text-gray-500 mt-1">
-              Across {new Set(wishlist.map(w => w.productId)).size} products
-            </p>
-          </CardContent>
-        </Card>
+          </div>
+        ))}
       </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Products</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {products.slice(0, 5).map((product) => (
-                <div key={product.id} className="flex items-center">
-                                    <div className="flex items-center gap-3">
-  {product.images && (
-    (() => {
-      let imagesArray: string[] = [];
 
-  if (typeof product.images === "string") 
-      try {
-         imagesArray = JSON.parse(product.images);
-      } catch (e) {
-        console.error("Failed to parse images JSON:", e);
-      }
-      return imagesArray[0] ? (
-        <img
-          src={`http://localhost:8000/${imagesArray[0].replace(/^\/+/, '')}`}
-          alt={product.name}
-          className="w-10 h-10 object-cover rounded"
-        />
-      ) : null;
-    })()
-  )}
-
-</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{product.name}</p>
-                    <p className="text-sm text-gray-500 truncate">
-                      ₹{(product.discountPrice || product.price).toLocaleString('en-IN')}
-                    </p>
-                  </div>
-                  <div className="ml-4">
+      {/* Recent Transactions */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="p-6 border-b">
+          <h2 className="text-lg font-semibold">Recent Transactions</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="text-left text-gray-500 border-b">
+                <th className="px-6 py-3">Invoice</th>
+                <th className="px-6 py-3">Customer</th>
+                <th className="px-6 py-3">Product</th>
+                <th className="px-6 py-3">Amount</th>
+                <th className="px-6 py-3">Date</th>
+                <th className="px-6 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { id: "INV-001", user: "John Doe", amount: "₹89,999", product: "Dell XPS 13", date: "12 Apr 2024", status: "Completed" },
+                { id: "INV-002", user: "Jane Smith", amount: "₹179,999", product: "MacBook Pro 14", date: "10 Apr 2024", status: "Pending" },
+                { id: "INV-003", user: "Michael Johnson", amount: "₹5,999", product: "Lenovo ThinkPad X1 Carbon (Rental)", date: "8 Apr 2024", status: "Completed" },
+                { id: "INV-004", user: "Sarah Williams", amount: "₹6,499", product: "HP Spectre x360 (Rental)", date: "5 Apr 2024", status: "Completed" },
+              ].map((transaction, index) => (
+                <tr key={index} className="border-b hover:bg-gray-50">
+                  <td className="px-6 py-4">{transaction.id}</td>
+                  <td className="px-6 py-4">{transaction.user}</td>
+                  <td className="px-6 py-4">{transaction.product}</td>
+                  <td className="px-6 py-4">{transaction.amount}</td>
+                  <td className="px-6 py-4">{transaction.date}</td>
+                  <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded-full text-xs ${
-                      product.in_stock 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
+                      transaction.status === 'Completed' 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-yellow-100 text-yellow-700'
                     }`}>
-                      {product.in_stock ? 'In Stock ' : 'Out of Stock'}
+                      {transaction.status}
                     </span>
-                  </div>
-                </div>
+                  </td>
+                </tr>
               ))}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {users.slice(0, 5).map((user) => (
-                <div key={user.id} className="flex items-center">
-                  <div className="w-10 h-10 rounded-full overflow-hidden mr-4 bg-gray-100 flex-shrink-0">
-                    {user.avatar ? (
-                      <img
-                        src={user.avatar}
-                        alt={`${user.firstName} ${user.lastName}`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-navy text-white">
-                        {user.firstName.charAt(0)}
-                        {user.lastName.charAt(0)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">
-                      {user.firstName} {user.lastName}
-                    </p>
-                    <p className="text-sm text-gray-500 truncate">{user.email}</p>
-                  </div>
-                  <div className="ml-4">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      user.role === 'admin' 
-                        ? 'bg-purple-100 text-purple-800' 
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {user.role}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+            </tbody>
+          </table>
+        </div>
       </div>
-    </AdminLayout>
+    </>
+  );
+
+  return (
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
+      <div className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-white shadow-md transition-all duration-300 h-screen`}>
+        <div className="flex items-center justify-between p-4 border-b">
+          <h1 className={`font-bold text-xl text-primary ${!isSidebarOpen && 'hidden'}`}>
+            LaptopLelo Admin
+          </h1>
+          <button 
+            onClick={toggleSidebar} 
+            className="p-1 rounded-full hover:bg-gray-100"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {isSidebarOpen ? (
+                <path d="M15 18l-6-6 6-6" />
+              ) : (
+                <path d="M9 18l6-6-6-6" />
+              )}
+            </svg>
+          </button>
+        </div>
+        <nav className="mt-6">
+          <ul>
+            {menuItems.map((item, index) => (
+              <li key={index}>
+                <Link
+                  to={item.path}
+                  className={`flex ${
+                    isSidebarOpen ? "items-center" : "flex-col items-center"
+                  } px-4 py-3 text-gray-600 hover:bg-gray-100 hover:text-primary transition-colors ${
+                    window.location.pathname === item.path
+                      ? "bg-primary/10 text-primary"
+                      : ""
+                  }`}
+                >
+                  <span className="mr-3">{item.icon}</span>
+                  {isSidebarOpen && <span>{item.name}</span>}
+                  {!isSidebarOpen && (
+                    <span className="text-xs mt-1">{item.name.split(" ")[0]}</span>
+                  )}
+                </Link>
+              </li>
+            ))}
+            <li>
+              <button
+                onClick={handleLogout}
+                className={`flex ${
+                  isSidebarOpen ? "items-center" : "flex-col items-center"
+                } w-full px-4 py-3 text-gray-600 hover:bg-gray-100 hover:text-red-500 transition-colors`}
+              >
+                <span className="mr-3">
+                  <LogOut size={20} />
+                </span>
+                {isSidebarOpen && <span>Logout</span>}
+                {!isSidebarOpen && <span className="text-xs mt-1">Logout</span>}
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
+        <header className="bg-white shadow-sm">
+          <div className="flex items-center justify-between px-6 py-4">
+            <h1 className="text-2xl font-semibold">
+              {window.location.pathname === "/admin" ? "Dashboard" : 
+               menuItems.find(item => item.path === window.location.pathname)?.name || "Dashboard"}
+            </h1>
+            <div className="flex items-center">
+              <span className="text-sm mr-4">Welcome, {user?.name}</span>
+              <img 
+                src="https://randomuser.me/api/portraits/men/1.jpg" 
+                alt="Admin" 
+                className="w-10 h-10 rounded-full"
+              />
+            </div>
+          </div>
+        </header>
+
+        <main className="p-6">
+          {children || dashboardContent}
+        </main>
+      </div>
+    </div>
   );
 };
 
