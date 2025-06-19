@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+
+// Keep if using arrows
+
+
+// Enable the module
+
+
 import {
   Heart,
   ShoppingCart,
@@ -26,6 +33,8 @@ import axios from 'axios';
 import { useCart } from "../components/layout/cartprovider"
 import { useWishlist } from "../components/layout/wishlistprovider";
 import { BASE_URL } from "@/routes";
+import { Autoplay, Thumbs,Pagination  } from "swiper/modules";
+
 
 
 interface Product {
@@ -60,6 +69,7 @@ const ProductDetailPage = () => {
   const [wishlist, setWishlist] = useState([]);
   const { fetchCartCount } = useCart()
   const { fetchWishlistCount } = useWishlist();
+const [thumbsSwiper, setThumbsSwiper] = useState(null);
 
   const token = localStorage.getItem("token");
   const headers = {
@@ -119,29 +129,33 @@ const ProductDetailPage = () => {
   }, [id]);
 
 
-  useEffect(() => {
-    if (!product) return;
+ useEffect(() => {
+  if (!product || !product.image) return;
 
-    const possibleUrls = [
-      `.jpg`, `.png`, `.jpeg`
-    ].flatMap(ext =>
-      [1, 2, 3, 4].map(i =>
-        `${BASE_URL}/static/uploaded_images/${i}_${product.id}${ext}`
-      )
-    );
+  const filename = product.image;
+  const baseName = filename.split(".")[0]; // e.g., "product_image_1_3"
+  const ext = filename.split(".")[1]; // e.g., "png"
+  const productId = product.id;
 
-    const checkImage = url =>
-      new Promise(resolve => {
-        const img = new Image();
-        img.onload = () => resolve(url);
-        img.onerror = () => resolve(null);
-        img.src = url;
-      });
+  const possibleUrls = Array.from({ length: 4 }, (_, i) => {
+    const index = i + 1;
+    return `${BASE_URL}/static/uploaded_images/product_image_${index}_${productId}.${ext}`;
+  });
 
-    Promise.all(possibleUrls.map(checkImage)).then(urls => {
-      setImageUrls(urls.filter(Boolean));
+  const checkImage = url =>
+    new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => resolve(url);
+      img.onerror = () => resolve(null);
+      img.src = url;
     });
-  }, [product]);
+
+  Promise.all(possibleUrls.map(checkImage)).then(urls => {
+    const validUrls = urls.filter(Boolean);
+    setImageUrls(validUrls.length ? validUrls : ["https://via.placeholder.com/300x200?text=No+Image"]);
+  });
+}, [product]);
+
 
   const fetchCartAndProducts = async () => {
     try {
@@ -309,24 +323,40 @@ const ProductDetailPage = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
         {/* Product Image */}
-        <div className="w-full h-full max-h-[400px]">
-          {imageUrls.length > 0 ? (
-            <Swiper spaceBetween={10} slidesPerView={1} className="w-full h-full">
-              {imageUrls.map((url, index) => (
-                <SwiperSlide key={index} className="w-full h-full">
-                  <div className="w-full h-full bg-gray-100 rounded-lg overflow-hidden">
-                    <img
-                      src={url}
-                      alt={`product-image-${index + 1}`}
-                      className="w-full h-full object-fill"
-                    />
-                  </div>
-                </SwiperSlide>
-              ))}
-            </Swiper>
-          ) : (
-            <p>No images available</p>
-          )}
+        <div className="w-full  h-full max-h-[400px]">
+           {imageUrls.length > 0 && (
+  <div className="absolute bottom-[42%] left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded-full z-10">
+      {imageUrls.length} {imageUrls.length === 1 ? "image" : "images"}
+    </div>
+ 
+  )}
+
+<Swiper
+  spaceBetween={10}
+  slidesPerView={1}
+  loop={true}
+  autoplay={{
+    delay: 3000,
+    disableOnInteraction: false,
+  }}
+  modules={[Autoplay]} // 👈 this is important
+  className="w-full h-full"
+>
+  {imageUrls.map((url, index) => (
+    <SwiperSlide key={index} className="w-full h-full">
+      <div className="w-full h-full bg-gray-100 rounded-lg overflow-hidden">
+        <img
+          src={url}
+          alt={product.name}
+          className="w-full h-full object-cover"
+        />
+      </div>
+    </SwiperSlide>
+  ))}
+</Swiper>
+
+
+
         </div>
 
         {/* Product Details */}

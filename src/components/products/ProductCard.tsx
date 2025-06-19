@@ -22,31 +22,14 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
 
   useEffect(() => {
-    const loadImage = () => {
-      const extensions = ["jpg", "jpeg", "png"];
-      let found = false;
-
-      extensions.forEach(ext => {
-        const url = `${BASE_URL}/static/uploaded_images/${product.id}.${ext}`;
-        const img = new Image();
-        img.src = url;
-
-        img.onload = () => {
-          if (!found) {
-            found = true;
-            setImageUrl(url);
-          }
-        };
-
-        img.onerror = () => {
-          // Try next extension silently
-        };
-      });
-    };
-
-    loadImage();
-  }, [product.id]);
-
+    if (product.image) {
+      // 👇 construct full image URL
+      setImageUrl(`${BASE_URL}/static/uploaded_images/${product.image}`);
+    } else {
+      // 👇 fallback image
+      setImageUrl("https://via.placeholder.com/300x200?text=No+Image");
+    }
+  }, [product.image]);
 
 
   const token = localStorage.getItem("token"); // or use context if needed
@@ -104,12 +87,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
       <div className="relative">
         <Link to={`/product/${product.id}`}>
           <div className="h-48 overflow-hidden">
-            <img
-              src={imageUrl}
-              alt={product.name}
-              className={`w-full h-full object-cover transition-transform duration-300 ${isHovered ? "scale-110" : "scale-100"
-                }`}
-            />
+             <img
+      src={imageUrl}
+      alt={product.name}
+      className="w-full h-48 object-cover"
+    />
           </div>
         </Link>
         <Badge
