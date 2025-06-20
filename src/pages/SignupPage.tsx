@@ -15,7 +15,6 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Eye, EyeOff } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { users } from "@/data/users";
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -169,7 +168,6 @@ const SignupPage = () => {
                 </button>
               </div>
             </div>
-
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="terms"

@@ -30,7 +30,6 @@ import Analytics from "@/pages/admin/Analytics";
 import AdminProfile from "@/pages/admin/AdminProfile";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import UserProfile from "@/pages/user/UserProfile";
-import EditProfile from "@/pages/user/EditProfile";
 import UserAddress from "@/pages/user/UserAddress";
 import UserKYC from "@/pages/user/UserKYC";
 import UserPassword from "@/pages/user/UserPassword";
@@ -45,7 +44,7 @@ import RefundPolicy from "./pages/RefundPolicy";
 import ShippingPolicy from "./pages/ShippingPolicy ";
 import TermsAndConditions from "./pages/TermsAndConditions ";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
-import ScrollToTop from "./pages/ScrollToTop ";
+import ScrollToTop from "./pages/ScrollToTop";
 import { WishlistProvider } from "./components/layout/wishlistprovider";
 import { CartProvider } from "./components/layout/cartprovider";
 import ContactList from "./pages/admin/ContactList";
@@ -225,16 +224,6 @@ const App = () => (
                       </MainLayout>
                     }
                   />
-
-                  <Route
-                    path="/user/editprofile"
-                    element={
-                      <MainLayout>
-                        <EditProfile />
-                      </MainLayout>
-                    }
-                  />
-
                   <Route
                     path="/user/address"
                     element={

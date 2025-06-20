@@ -2,11 +2,11 @@
 import { Link, useLocation } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import { 
-  User,
-  MapPin,
-  Shield,
-  Lock,
-  ShoppingBag
+  User, 
+  MapPin, 
+  Shield, 
+  Lock, 
+  ShoppingBag 
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
