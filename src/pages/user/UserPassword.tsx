@@ -64,64 +64,95 @@ const UserPassword = () => {
     setPasswordStrength(strength);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validation
-    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields",
-        variant: "destructive"
-      });
-      return;
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+    toast({
+      title: "Error",
+      description: "Please fill in all fields",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    toast({
+      title: "Error",
+      description: "New passwords don't match",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  if (passwordStrength < 3) {
+    toast({
+      title: "Error",
+      description: "Please use a stronger password",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setIsSubmitting(true);
+
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    toast({
+      title: "Unauthorized",
+      description: "Please login again",
+      variant: "destructive",
+    });
+    navigate("/login");
+    return;
+  }
+
+  try {
+    const response = await fetch(`http://127.0.0.1:8001/users/change-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        current_password: passwordForm.currentPassword,
+        new_password: passwordForm.newPassword,
+      }),
+    });
+
+    if (response.status === 401) {
+      localStorage.removeItem("token");
+      navigate("/login");
+      throw new Error("Session expired. Please login again.");
     }
-    
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "New passwords don't match",
-        variant: "destructive"
-      });
-      return;
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || "Failed to change password");
     }
-    
-    if (passwordForm.newPassword.length < 8) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 8 characters long",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (passwordStrength < 3) {
-      toast({
-        title: "Error",
-        description: "Please use a stronger password",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // In a real app, this would make an API call
-    setIsSubmitting(true);
-    
-    setTimeout(() => {
-      toast({
-        title: "Password updated",
-        description: "Your password has been updated successfully",
-      });
-      
-      setPasswordForm({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: ""
-      });
-      
-      setIsSubmitting(false);
-    }, 1500);
-  };
+
+    toast({
+      title: "Success",
+      description: "Password updated successfully",
+    });
+
+    setPasswordForm({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to change password",
+      variant: "destructive",
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   return (
     <div className="container mx-auto px-4 py-8">

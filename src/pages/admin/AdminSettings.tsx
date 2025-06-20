@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
@@ -6,9 +5,11 @@ import {
   Settings, 
   Lock, 
   Bell, 
-  Mail,
-  Shield,
-  Save
+  Eye,
+  EyeOff,
+  Loader2,
+  Save,
+  Shield
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +30,14 @@ const AdminSettings = () => {
     newPassword: "",
     confirmPassword: ""
   });
+
+  const [showPassword, setShowPassword] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
   
+  const [isLoading, setIsLoading] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState({
     newOrders: true,
     newUsers: true,
@@ -39,7 +47,7 @@ const AdminSettings = () => {
     browserNotifications: false
   });
 
-  // If user is not admin, redirect to login
+  // Redirect if not admin
   if (!user || user.role !== 'admin') {
     navigate('/login');
     return null;
@@ -53,6 +61,13 @@ const AdminSettings = () => {
     }));
   };
 
+  const togglePasswordVisibility = (field: keyof typeof showPassword) => {
+    setShowPassword(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
+  };
+
   const handleNotificationChange = (name: string) => {
     setNotificationSettings(prev => ({
       ...prev,
@@ -60,16 +75,18 @@ const AdminSettings = () => {
     }));
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validation
+    setIsLoading(true);
+
+    // Validate inputs
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       toast({
         title: "Error",
         description: "New passwords don't match",
         variant: "destructive"
       });
+      setIsLoading(false);
       return;
     }
     
@@ -79,27 +96,73 @@ const AdminSettings = () => {
         description: "Password must be at least 8 characters long",
         variant: "destructive"
       });
+      setIsLoading(false);
       return;
     }
-    
-    // In a real app, this would make an API call
-    toast({
-      title: "Password updated",
-      description: "Your password has been updated successfully",
-    });
-    
-    // Reset form
-    setPasswordForm({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: ""
-    });
+
+    // Get token
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({
+        title: "Authentication Error",
+        description: "Please login again",
+        variant: "destructive"
+      });
+      navigate('/login');
+      setIsLoading(false);
+      return;
+    }
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001"; // place this at top of your file
+
+    try {
+    const response = await fetch(`${BASE_URL}/users/change-password`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+body: JSON.stringify({
+  current_password: passwordForm.currentPassword,
+  new_password: passwordForm.newPassword
+})
+
+});
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        navigate('/login');
+        throw new Error("Session expired. Please login again.");
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to change password');
+      }
+
+      toast({
+        title: "Success",
+        description: "Password updated successfully",
+      });
+      
+      // Reset form
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: ""
+      });
+
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to change password",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleNotificationSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // In a real app, this would make an API call
     toast({
       title: "Settings updated",
       description: "Your notification settings have been updated successfully",
@@ -135,26 +198,48 @@ const AdminSettings = () => {
                     <div className="space-y-4">
                       <div className="grid gap-2">
                         <Label htmlFor="currentPassword">Current Password</Label>
-                        <Input
-                          id="currentPassword"
-                          name="currentPassword"
-                          type="password"
-                          value={passwordForm.currentPassword}
-                          onChange={handlePasswordChange}
-                          required
-                        />
+                        <div className="relative">
+                          <Input
+                            id="currentPassword"
+                            name="currentPassword"
+                            type={showPassword.current ? "text" : "password"}
+                            value={passwordForm.currentPassword}
+                            onChange={handlePasswordChange}
+                            required
+                            autoComplete="current-password"
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                            onClick={() => togglePasswordVisibility('current')}
+                            aria-label={showPassword.current ? "Hide password" : "Show password"}
+                          >
+                            {showPassword.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
                       </div>
                       
                       <div className="grid gap-2">
                         <Label htmlFor="newPassword">New Password</Label>
-                        <Input
-                          id="newPassword"
-                          name="newPassword"
-                          type="password"
-                          value={passwordForm.newPassword}
-                          onChange={handlePasswordChange}
-                          required
-                        />
+                        <div className="relative">
+                          <Input
+                            id="newPassword"
+                            name="newPassword"
+                            type={showPassword.new ? "text" : "password"}
+                            value={passwordForm.newPassword}
+                            onChange={handlePasswordChange}
+                            required
+                            autoComplete="new-password"
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                            onClick={() => togglePasswordVisibility('new')}
+                            aria-label={showPassword.new ? "Hide password" : "Show password"}
+                          >
+                            {showPassword.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
                         <p className="text-xs text-gray-500">
                           Password must be at least 8 characters long and contain a mix of uppercase,
                           lowercase, numbers, and special characters.
@@ -163,19 +248,35 @@ const AdminSettings = () => {
                       
                       <div className="grid gap-2">
                         <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                        <Input
-                          id="confirmPassword"
-                          name="confirmPassword"
-                          type="password"
-                          value={passwordForm.confirmPassword}
-                          onChange={handlePasswordChange}
-                          required
-                        />
+                        <div className="relative">
+                          <Input
+                            id="confirmPassword"
+                            name="confirmPassword"
+                            type={showPassword.confirm ? "text" : "password"}
+                            value={passwordForm.confirmPassword}
+                            onChange={handlePasswordChange}
+                            required
+                            autoComplete="new-password"
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                            onClick={() => togglePasswordVisibility('confirm')}
+                            aria-label={showPassword.confirm ? "Hide password" : "Show password"}
+                          >
+                            {showPassword.confirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
                       </div>
                     </div>
                     
-                    <Button type="submit" className="w-full sm:w-auto">
-                      <Save className="mr-2 h-4 w-4" /> Update Password
+                    <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
+                      {isLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      {isLoading ? "Updating..." : "Update Password"}
                     </Button>
                   </form>
                 </CardContent>
