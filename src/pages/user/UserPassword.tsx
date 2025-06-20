@@ -33,6 +33,8 @@ const UserPassword = () => {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
+  
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001"; // place this at top of your file
 
   // If user is not logged in, redirect to login
   if (!user) {
@@ -64,14 +66,15 @@ const UserPassword = () => {
     setPasswordStrength(strength);
   };
 
-const handleSubmit = async (e: React.FormEvent) => {
+ const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
 
+  // Validation
   if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
     toast({
       title: "Error",
       description: "Please fill in all fields",
-      variant: "destructive",
+      variant: "destructive"
     });
     return;
   }
@@ -80,7 +83,16 @@ const handleSubmit = async (e: React.FormEvent) => {
     toast({
       title: "Error",
       description: "New passwords don't match",
-      variant: "destructive",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  if (passwordForm.newPassword.length < 8) {
+    toast({
+      title: "Error",
+      description: "Password must be at least 8 characters long",
+      variant: "destructive"
     });
     return;
   }
@@ -89,63 +101,47 @@ const handleSubmit = async (e: React.FormEvent) => {
     toast({
       title: "Error",
       description: "Please use a stronger password",
-      variant: "destructive",
+      variant: "destructive"
     });
     return;
   }
 
   setIsSubmitting(true);
 
-  const token = localStorage.getItem("token");
-
-  if (!token) {
-    toast({
-      title: "Unauthorized",
-      description: "Please login again",
-      variant: "destructive",
-    });
-    navigate("/login");
-    return;
-  }
-
   try {
-    const response = await fetch(`http://127.0.0.1:8001/users/change-password`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        current_password: passwordForm.currentPassword,
-        new_password: passwordForm.newPassword,
-      }),
-    });
+   const response = await fetch(`${BASE_URL}/user/change-password`, {
+  method: "PUT",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${localStorage.getItem("token")}`,
+  },
+  body: JSON.stringify({
+    current_password: passwordForm.currentPassword,
+    new_password: passwordForm.newPassword
+  }),
+});
 
-    if (response.status === 401) {
-      localStorage.removeItem("token");
-      navigate("/login");
-      throw new Error("Session expired. Please login again.");
-    }
+    const data = await response.json();
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || "Failed to change password");
+      throw new Error(data.detail || "Something went wrong");
     }
 
     toast({
       title: "Success",
-      description: "Password updated successfully",
+      description: data.message,
     });
 
     setPasswordForm({
       currentPassword: "",
       newPassword: "",
-      confirmPassword: "",
+      confirmPassword: ""
     });
+
   } catch (error) {
     toast({
       title: "Error",
-      description: error instanceof Error ? error.message : "Failed to change password",
+      description: error.message,
       variant: "destructive",
     });
   } finally {

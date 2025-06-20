@@ -44,7 +44,7 @@ import RefundPolicy from "./pages/RefundPolicy";
 import ShippingPolicy from "./pages/ShippingPolicy ";
 import TermsAndConditions from "./pages/TermsAndConditions ";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
-import ScrollToTop from "./pages/ScrollToTop ";
+import ScrollToTop from "./pages/ScrollToTop";
 import { WishlistProvider } from "./components/layout/wishlistprovider";
 import { CartProvider } from "./components/layout/cartprovider";
 import ContactList from "./pages/admin/ContactList";

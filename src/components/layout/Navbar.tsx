@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
-import { AiOutlineDesktop } from 'react-icons/ai'; // Make sure react-icons is installed
+import { AiOutlineDesktop } from 'react-icons/ai';
 import { Link, useNavigate } from "react-router-dom";
 import {
-  ShoppingCart, Heart, Search, Menu, X, User, LogIn,
-  LogOut, Phone, Store
+  Heart, Search, Menu, X, User, LogIn,
+  LogOut, Store
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { Button } from "@/components/ui/button";
@@ -17,14 +16,11 @@ import {
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { useWishlist } from "./wishlistprovider";
-import { useCart } from "./cartprovider";
 import { BASE_URL } from "../../routes";
 
 const Navbar = () => {
-
   const navigate = useNavigate();
   const {
-    cart,
     wishlist,
     user,
     logout,
@@ -34,7 +30,6 @@ const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isScrolled, setIsScrolled] = useState(false);
   const { wishlistCount } = useWishlist();
-  const { cartCount } = useCart();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -59,10 +54,7 @@ const Navbar = () => {
   ];
 
   return (
-    <header
-      className={`sticky top-0 z-50 w-full transition-all duration-300 ${isScrolled ? "bg-white shadow-md" : "bg-white"
-        }`}
-    >
+    <header className={`sticky top-0 z-50 w-full transition-all duration-300 ${isScrolled ? "bg-white shadow-md" : "bg-white"}`}>
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           {/* Logo */}
@@ -103,16 +95,6 @@ const Navbar = () => {
               <AiOutlineDesktop className="mr-2 z-10 text-sm" />
               <span className="z-10">Build Your PC</span>
             </Link>
-            <Link to="/cart">
-              <Button variant="ghost" size="icon" className="relative">
-                <ShoppingCart className="h-5 w-5" />
-                {cartCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-primary">
-                    {cartCount}
-                  </Badge>
-                )}
-              </Button>
-            </Link>
             <Link to="/wishlist">
               <Button variant="ghost" size="icon" className="relative">
                 <Heart className="h-5 w-5" />
@@ -142,6 +124,7 @@ const Navbar = () => {
               </Link>
             )}
           </nav>
+
           {/* Mobile menu */}
           <div className="md:hidden flex items-center">
             <Sheet>
@@ -191,21 +174,8 @@ const Navbar = () => {
                     ))}
                   </div>
 
-                  {/* Auth & Cart Links */}
+                  {/* Auth & Wishlist Links */}
                   <div className="mt-auto space-y-4">
-                    <SheetClose asChild>
-                      <Link
-                        to="/cart"
-                        className="flex items-center justify-between py-2"
-                      >
-                        <span className="flex items-center">
-                          <ShoppingCart className="h-5 w-5 mr-2" /> Cart
-                        </span>
-                        {cartCount > 0 && (
-                          <Badge className="bg-primary">{cartCount}</Badge>
-                        )}
-                      </Link>
-                    </SheetClose>
                     <SheetClose asChild>
                       <Link
                         to="/wishlist"

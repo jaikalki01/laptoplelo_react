@@ -6,6 +6,7 @@ const apiRoutes = {
     login: `${BASE_URL}/auth/login`,
     register: `${BASE_URL}/auth/register`,
     logout: `${BASE_URL}/auth/logout`,
+    password: `${BASE_URL}/users/change-password`,
   },
   users: {
     getAll: `${BASE_URL}/users`,
