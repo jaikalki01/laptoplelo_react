@@ -20,13 +20,14 @@ import {
 } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { Swiper, SwiperSlide } from 'swiper/react';
+import { Autoplay } from 'swiper/modules';
 import SwiperCore from 'swiper';
 import 'swiper/css';
+import 'swiper/css/autoplay';
 import axios from 'axios';
 import { useCart } from "../components/layout/cartprovider"
 import { useWishlist } from "../components/layout/wishlistprovider";
 import { BASE_URL } from "@/routes";
-
 
 interface Product {
   id: string;
@@ -53,31 +54,30 @@ const ProductDetailPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { products, addToCart, addToWishlist } = useApp();
-  const [type, setType] = useState("sale"); // or "sale
+  const [type, setType] = useState("sale");
   const [product, setProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
-  const [rental_duration, setRentalDuration] = useState(30); // Default to 30 days
+  const [rental_duration, setRentalDuration] = useState(30);
   const [wishlist, setWishlist] = useState([]);
   const { fetchCartCount } = useCart()
   const { fetchWishlistCount } = useWishlist();
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
 
   const token = localStorage.getItem("token");
   const headers = {
     Authorization: `Bearer ${token}`,
   };
 
-  useEffect(() => {
-    axios
-      .get(`${BASE_URL}/wishlist/wishlist`, { headers })
-      .then((res) => {
-        const productIds = res.data.wishlist.map((p) => p.id);
-        setWishlist(productIds);
-      })
-      .catch((err) => {
-        console.error("Failed to load wishlist:", err);
-      });
-  }, []);
-
+ useEffect(() => {
+  axios.get<{ wishlist: { id: string }[] }>(`${BASE_URL}/wishlist/wishlist`, { headers })
+    .then((res) => {
+      const productIds = res.data.wishlist.map((p) => p.id);
+      setWishlist(productIds);
+    })
+    .catch((err) => {
+      console.error("Failed to load wishlist:", err);
+    });
+}, []);
   const isInWishlist = (id) => wishlist.includes(id);
 
   const toggleWishlist = async (product) => {
@@ -98,18 +98,16 @@ const ProductDetailPage = () => {
     }
   };
 
-
   const [imageUrls, setImageUrls] = useState([]);
 
   useEffect(() => {
     if (id) {
-      fetch(`${BASE_URL}/products/${id}`) // 🔗 Your FastAPI endpoint
+      fetch(`${BASE_URL}/products/${id}`)
         .then((res) => res.json())
         .then((data) => {
           setProduct(data);
         })
         .catch((error) => {
-          //console.error("Error fetching product:", error);
           toast({
             title: "Failed to load product",
             variant: "destructive",
@@ -117,7 +115,6 @@ const ProductDetailPage = () => {
         });
     }
   }, [id]);
-
 
   useEffect(() => {
     if (!product) return;
@@ -162,8 +159,6 @@ const ProductDetailPage = () => {
       if (!cartResponse.ok) throw new Error('Failed to fetch cart');
 
       const cartData = await cartResponse.json();
-      console.log('Raw cart data:', cartData);
-
       const productId = product.id;
       const cartItem = cartData.find(item => item.product_id === productId);
 
@@ -173,18 +168,11 @@ const ProductDetailPage = () => {
     }
   };
 
-
   useEffect(() => {
     if (product?.id) {
       fetchCartAndProducts();
     }
   }, [product]);
-
-
-  // Optionally handle the case when imageUrl is null
-  // if (!imageUrl) {
-  //   console.log('Image URL not available');
-  // }
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -201,15 +189,16 @@ const ProductDetailPage = () => {
 
     fetch(`${BASE_URL}/cart`, {
       method: "POST",
-      headers: { "Content-Type": "application/json",
-      Authorization: `Bearer ${token}` },
+      headers: { 
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}` 
+      },
       body: JSON.stringify(payload),
     })
       .then((res) => res.json())
       .then((data) => {
         addToCart(product);
         toast({ title: "Added to cart" });
-        console.log(data.type);
         fetchCartCount();
       })
       .catch((error) => {
@@ -219,8 +208,6 @@ const ProductDetailPage = () => {
           variant: "destructive",
         });
       });
-
-    console.log(payload);
   };
 
   const handleRemoveFromCart = () => {
@@ -230,19 +217,19 @@ const ProductDetailPage = () => {
 
     fetch(`${BASE_URL}/cart/cart/remove`, {
       method: "POST",
-      headers: { "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`
-       },
+      headers: { 
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
       body: JSON.stringify({
         product_id: product.id,
-        user_id: 1, // replace with actual logged-in user ID
+        user_id: 1,
         type: product.type,
       }),
     })
       .then((res) => res.json())
       .then((data) => {
         toast({ title: "Removed from cart" });
-        console.log("Removed:", data);
         fetchCartCount();
       })
       .catch((error) => {
@@ -253,7 +240,6 @@ const ProductDetailPage = () => {
         });
       });
   };
-
 
   const handleShare = () => {
     if (navigator.share) {
@@ -266,6 +252,7 @@ const ProductDetailPage = () => {
         .then(() => {
           toast({
             title: "Shared successfully",
+          variant: "default",
           });
         })
         .catch((error) => {
@@ -279,8 +266,13 @@ const ProductDetailPage = () => {
       navigator.clipboard.writeText(window.location.href);
       toast({
         title: "Link copied to clipboard",
+        variant: "default",
       });
     }
+  };
+
+  const handleSlideChange = (swiper) => {
+    setActiveSlideIndex(swiper.realIndex);
   };
 
   if (!product) {
@@ -308,24 +300,42 @@ const ProductDetailPage = () => {
       </Button>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-        {/* Product Image */}
-        <div className="w-full h-full max-h-[400px]">
+        {/* Enhanced Product Image Slider */}
+        <div className="w-full h-full max-h-[400px] relative">
           {imageUrls.length > 0 ? (
-            <Swiper spaceBetween={10} slidesPerView={1} className="w-full h-full">
-              {imageUrls.map((url, index) => (
-                <SwiperSlide key={index} className="w-full h-full">
-                  <div className="w-full h-full bg-gray-100 rounded-lg overflow-hidden">
-                    <img
-                      src={url}
-                      alt={`product-image-${index + 1}`}
-                      className="w-full h-full object-fill"
-                    />
-                  </div>
-                </SwiperSlide>
-              ))}
-            </Swiper>
+            <>
+              <Swiper 
+                modules={[Autoplay]}
+                spaceBetween={10} 
+                slidesPerView={1} 
+                className="w-full h-full"
+                autoplay={{
+                  delay: 3000,
+                  disableOnInteraction: false,
+                }}
+                loop={true}
+                onSlideChange={handleSlideChange}
+              >
+                {imageUrls.map((url, index) => (
+                  <SwiperSlide key={index} className="w-full h-full">
+                    <div className="w-full h-full bg-gray-100 rounded-lg overflow-hidden">
+                      <img
+                        src={url}
+                        alt={`product-image-${index + 1}`}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+              <div className="absolute bottom-4 right-4 bg-black bg-opacity-50 text-white px-2 py-1 rounded-md text-sm z-10">
+                {`${activeSlideIndex + 1}/${imageUrls.length}`}
+              </div>
+            </>
           ) : (
-            <p>No images available</p>
+            <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center">
+              <p>No images available</p>
+            </div>
           )}
         </div>
 
@@ -369,7 +379,6 @@ const ProductDetailPage = () => {
                     <Button
                       key={months}
                       variant={rental_duration === months * 30 ? "default" : "outline"}
-                      className={rental_duration === months * 30 ? "bg-primary" : ""}
                       onClick={() => setRentalDuration(months * 30)}
                     >
                       {months} {months === 1 ? "Month" : "Months"}
@@ -458,7 +467,6 @@ const ProductDetailPage = () => {
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="specifications">Specifications</TabsTrigger>
           <TabsTrigger value="features">Features</TabsTrigger>
-          {/* <TabsTrigger value="reviews">Reviews</TabsTrigger> */}
         </TabsList>
         <TabsContent value="specifications" className="p-6 border rounded-b-md">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -549,62 +557,8 @@ const ProductDetailPage = () => {
             </li>
           </ul>
         </TabsContent>
-        {/* <TabsContent value="reviews" className="p-6 border rounded-b-md">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-semibold">Customer Reviews</h3>
-            <Button>Write a Review</Button>
-          </div>
-          <div className="space-y-6">
-            {/* Sample reviews */}
-        {/* <div className="border-b pb-6">
-              <div className="flex items-center mb-2">
-                <span className="font-medium mr-2">Amit Kumar</span>
-                <div className="flex">
-                  {[...Array(5)].map((_, i) => (
-                    <svg
-                      key={i}
-                      className={`h-4 w-4 ${i < 4 ? "text-yellow-400" : "text-gray-300"
-                        }`}
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                </div>
-                <span className="text-gray-500 text-sm ml-2">1 month ago</span>
-              </div>
-              <p className="text-gray-700">
-                Great laptop for my work needs. Fast performance and excellent battery life.
-              </p>
-            </div>
-            <div className="border-b pb-6">
-              <div className="flex items-center mb-2">
-                <span className="font-medium mr-2">Priya Singh</span>
-                <div className="flex">
-                  {[...Array(5)].map((_, i) => (
-                    <svg
-                      key={i}
-                      className={`h-4 w-4 ${i < 5 ? "text-yellow-400" : "text-gray-300"
-                        }`}
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                </div>
-                <span className="text-gray-500 text-sm ml-2">2 weeks ago</span>
-              </div>
-              <p className="text-gray-700">
-                I rented this laptop for a project and it exceeded my expectations.
-                The display quality is amazing and it handled all my tasks without any lag.
-              </p>
-            </div>
-          </div> */}
-        {/* </TabsContent> */}
       </Tabs>
-    </div >
+    </div>
   );
 };
 

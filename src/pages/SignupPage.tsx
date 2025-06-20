@@ -82,7 +82,7 @@ const SignupPage = () => {
         throw new Error(errorData.detail || "Registration failed");
       }
 
-      const result = await response.json();
+      await response.json();
       login(email, password);
 
       toast({
