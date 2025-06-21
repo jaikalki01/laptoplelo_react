@@ -36,6 +36,8 @@ const AddCouponModal = ({ isOpen, onClose, onSubmit }) => {
       return;
     }
 
+    const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001"; // place this at top of your file
+
     // Get the token from localStorage (or wherever you store it)
     const token = localStorage.getItem("token"); // Replace with your token retrieval method
 
@@ -49,16 +51,16 @@ const AddCouponModal = ({ isOpen, onClose, onSubmit }) => {
     }
 
     try {
-      await axios.post(`${BASE_URL}/coupon`, {
-        code,
-        discount_type: discountType,
-        discount_value: parseFloat(discountValue),
-        min_cart_value: parseFloat(minCartValue) || 0,
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`, // Add token in Authorization header
-        }
-      });
+   await axios.post(`${BASE_URL}/coupon/`, {
+  code: code.trim(),
+  discount_type: discountType,
+  discount_value: parseFloat(discountValue) || 0,
+  min_cart_value: parseFloat(minCartValue) || 0,
+}, {
+  headers: {
+    Authorization: `Bearer ${token}`,
+  }
+});
 
       toast({
         title: "Success",
@@ -92,13 +94,13 @@ const AddCouponModal = ({ isOpen, onClose, onSubmit }) => {
         </div>
         <div className="mb-4">
           <select
-            className="w-full p-2 border rounded-md"
-            value={discountType}
-            onChange={(e) => setDiscountType(e.target.value)}
-          >
-            <option value="percentage">Percentage</option>
-            <option value="fixed">Fixed Amount</option>
-          </select>
+  className="w-full p-2 border rounded-md"
+  value={discountType}
+  onChange={(e) => setDiscountType(e.target.value)}
+>
+  <option value="percentage">Percentage</option>
+  <option value="flat">Flat Amount</option>  
+</select>
         </div>
         <div className="mb-4">
           <Input
@@ -142,7 +144,7 @@ const CouponManagement = () => {
     min_cart_value: number;
   }) => {
     try {
-      await axios.post(`${BASE_URL}/coupon`, formData);
+      await axios.post(`${BASE_URL}/coupon/`, formData);
       toast({
         title: "Coupon Created",
         description: `Coupon ${formData.code} was created successfully.`,
@@ -168,7 +170,7 @@ const CouponManagement = () => {
   const fetchCoupons = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${BASE_URL}/coupon`);
+      const response = await axios.get(`${BASE_URL}/coupon/`);
       setCoupons(response.data);
     } catch (error) {
       toast({
@@ -199,51 +201,101 @@ const CouponManagement = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const handleDelete = async (couponId: string) => {
-    try {
-      await axios.delete(`${BASE_URL}/coupon/delete/${couponId}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-
-      setCoupons(coupons.filter(coupon => coupon.id !== couponId)); // Update state
-
+ const handleDelete = async (couponId: string) => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
       toast({
-        title: "Coupon deleted",
-        description: "Coupon has been deleted successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete coupon.",
+        title: "Unauthorized",
+        description: "You need to log in first.",
         variant: "destructive",
       });
+      return;
     }
-  };
+
+    const response = await axios.delete(`${BASE_URL}/coupon/${couponId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.status === 200) {
+      setCoupons(coupons.filter(coupon => coupon.id !== couponId));
+      toast({
+        title: "Success",
+        description: "Coupon deleted successfully",
+      });
+    }
+  } catch (error) {
+    console.error("Delete error:", error);
+    let errorMessage = "Failed to delete coupon";
+    
+    if (axios.isAxiosError(error)) {
+      errorMessage = error.response?.data?.detail || errorMessage;
+    }
+
+    toast({
+      title: "Error",
+      description: errorMessage,
+      variant: "destructive",
+    });
+  }
+};
 
 
-  const handleToggle = async (coupon) => {
-    const token = localStorage.getItem("token");
+const handleToggle = async (coupon: any) => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    toast({
+      title: "Unauthorized",
+      description: "Please log in to perform this action",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    try {
-      if (coupon.is_active) {
-        await axios.delete(`${BASE_URL}/coupon/deactivate/${coupon.id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } else {
-        await axios.post(`${BASE_URL}/coupon/activate/${coupon.id}`, null, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+  try {
+    const endpoint = coupon.is_active 
+      ? `${BASE_URL}/coupon/${coupon.id}/deactivate`
+      : `${BASE_URL}/coupon/${coupon.id}/activate`;
+
+    const response = await axios.patch(
+      endpoint,
+      null, // No body needed for these requests
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       }
+    );
 
-      fetchCoupons(); // or setCoupons(...) to update the list
-    } catch (error) {
-      console.error("Toggle error:", error);
+    if (response.status === 200) {
+      // Update local state instead of refetching all coupons
+      setCoupons(coupons.map(c => 
+        c.id === coupon.id ? { ...c, is_active: !coupon.is_active } : c
+      ));
+      
+      toast({
+        title: "Success",
+        description: `Coupon ${coupon.code} has been ${coupon.is_active ? 'deactivated' : 'activated'}`,
+      });
     }
-  };
+  } catch (error) {
+    console.error("Toggle error:", error);
+    
+    let errorMessage = "Failed to update coupon status";
+    if (axios.isAxiosError(error)) {
+      errorMessage = error.response?.data?.detail || errorMessage;
+    }
 
-
+    toast({
+      title: "Error",
+      description: errorMessage,
+      variant: "destructive",
+    });
+  }
+};
 
 
   const handleEdit = (couponId: string) => {

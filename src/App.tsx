@@ -38,7 +38,7 @@ import ContactPage from "@/pages/ContactPage";
 import NotFound from "@/pages/NotFound";
 import Adminaddproduct from "./pages/admin/Adminaddproduct";
 import EditProductPage from "./pages/admin/EditProductPage"
-import BuildyourPc from "./pages/BuildyourPC"
+import BuildyourPc from "./pages/BuildyourPC";
 import AboutUs from "./pages/AboutUs";
 import RefundPolicy from "./pages/RefundPolicy";
 import ShippingPolicy from "./pages/ShippingPolicy ";
@@ -48,7 +48,7 @@ import ScrollToTop from "./pages/ScrollToTop";
 import { WishlistProvider } from "./components/layout/wishlistprovider";
 import { CartProvider } from "./components/layout/cartprovider";
 import ContactList from "./pages/admin/ContactList";
-
+import BuildYourPC from '../src/pages/admin/BuildYourPC';
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -211,10 +211,11 @@ const App = () => (
                   <Route path="/admin/rentals" element={<RentManagement />} />
                   <Route path="/admin/reports" element={<ReportsPage />} />
                   <Route path="/admin/analytics" element={<Analytics />} />
+                  <Route path="/admin/buildpc" element={<BuildYourPC />} />
                   <Route path="/admin/profile" element={<AdminProfile />} />
                   <Route path="/admin/settings" element={<AdminSettings />} />
                   <Route path="/edit-product/:productId" element={<EditProductPage />} />
-
+                  <Route path="/admin/" element={<AdminDashboard />} />
                   {/* User Routes */}
                   <Route
                     path="/user/profile"

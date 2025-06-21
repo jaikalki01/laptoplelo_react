@@ -81,7 +81,7 @@ const PrivacyPolicy = () => {
           <li>Request correction of incorrect or incomplete data</li>
           <li>Request deletion of your data (subject to legal and transactional requirements)</li>
           <li>Withdraw consent for marketing communications</li>
-          <li>To exercise your rights, contact us at: <a href="mailto:support@laptoplelo.in" className="text-[rgb(155,135,245)] underline">support@laptoplelo.in</a></li>
+          <li>To exercise your rights, contact us at: <a href="mailto:support@mumbaipcmart.in" className="text-[rgb(155,135,245)] underline">support@mumbaipcmart.in</a></li>
         </ul>
       </section>
 
@@ -111,7 +111,7 @@ const PrivacyPolicy = () => {
         <p>For any queries, please contact:</p>
         <ul className="list-none mt-2">
           <li><strong>MumbaiPcMart.com</strong></li>
-          <li>Email: <a href="mailto:support@laptoplelo.in" className="text-[rgb(155,135,245)] underline">support@laptoplelo.in</a></li>
+          <li>Email: <a href="mailto:support@mumbaipcmart.in" className="text-[rgb(155,135,245)] underline">support@mumbaipcmart.in</a></li>
           <li>Address: [Insert Business Address Here]</li>
         </ul>
       </section>
