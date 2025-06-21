@@ -80,7 +80,7 @@ const ShippingPolicy = () => {
         <ul className="list-none mt-2">
           <li><strong>mumbaipcmart.in</strong></li>
           <li>Email: <a href="mailto:support@mumbaipcmart.in" className="text-[rgb(155,135,245)] underline">support@mumbaipcmart.in</a></li>
-          <li>Address: [Insert Business Address Here]</li>
+          <li>Address: Jaikalki Technology Pvt Ltd Anand India Business Hub, Mira Road, Mumbai, India</li>
         </ul>
       </section>
     </div>
