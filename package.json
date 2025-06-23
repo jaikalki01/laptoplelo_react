@@ -1,7 +1,7 @@
 {
   "name": "vite_react_shadcn_ts",
   "private": true,
-  "homepage": "https://jaikalki01.github.io/laptoplelo_react/",
+  // "homepage": "https://jaikalki01.github.io/laptoplelo_react/",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
@@ -10,8 +10,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    // "predeploy": "npm run build",
+    // "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "@chakra-ui/react": "^3.17.0",
