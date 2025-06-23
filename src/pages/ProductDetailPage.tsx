@@ -1,16 +1,13 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Heart,
-  ShoppingCart,
-  Check,
   ArrowLeft,
   Share2,
   Truck,
   Shield,
   RotateCcw,
 } from "lucide-react";
-import { useApp } from "@/context/AppContext";
 import { Button } from "@/components/ui/button";
 import {
   Tabs,
@@ -21,11 +18,9 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay } from 'swiper/modules';
-import SwiperCore from 'swiper';
 import 'swiper/css';
 import 'swiper/css/autoplay';
 import axios from 'axios';
-import { useCart } from "../components/layout/cartprovider"
 import { useWishlist } from "../components/layout/wishlistprovider";
 import { BASE_URL } from "@/routes";
 
@@ -53,34 +48,32 @@ const ProductDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { products, addToCart, addToWishlist } = useApp();
-  const [type, setType] = useState("sale");
   const [product, setProduct] = useState<Product | null>(null);
-  const [quantity, setQuantity] = useState(1);
   const [rental_duration, setRentalDuration] = useState(30);
-  const [wishlist, setWishlist] = useState([]);
-  const { fetchCartCount } = useCart()
+  const [wishlist, setWishlist] = useState<string[]>([]);
   const { fetchWishlistCount } = useWishlist();
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
 
   const token = localStorage.getItem("token");
   const headers = {
     Authorization: `Bearer ${token}`,
   };
 
- useEffect(() => {
-  axios.get<{ wishlist: { id: string }[] }>(`${BASE_URL}/wishlist/wishlist`, { headers })
-    .then((res) => {
-      const productIds = res.data.wishlist.map((p) => p.id);
-      setWishlist(productIds);
-    })
-    .catch((err) => {
-      console.error("Failed to load wishlist:", err);
-    });
-}, []);
-  const isInWishlist = (id) => wishlist.includes(id);
+  useEffect(() => {
+    axios.get<{ wishlist: { id: string }[] }>(`${BASE_URL}/wishlist/wishlist`, { headers })
+      .then((res) => {
+        const productIds = res.data.wishlist.map((p) => p.id);
+        setWishlist(productIds);
+      })
+      .catch((err) => {
+        console.error("Failed to load wishlist:", err);
+      });
+  }, []);
 
-  const toggleWishlist = async (product) => {
+  const isInWishlist = (id: string) => wishlist.includes(id);
+
+  const toggleWishlist = async (product: Product) => {
     const productId = product.id;
     const url = `${BASE_URL}/wishlist/wishlist/${productId}`;
 
@@ -92,13 +85,11 @@ const ProductDetailPage = () => {
         await axios.post(url, null, { headers });
         setWishlist((prev) => [...prev, productId]);
       }
-      fetchWishlistCount()
+      fetchWishlistCount();
     } catch (error) {
-      console.error("Error updating wishlist:", error.response?.data || error.message);
+      console.error("Error updating wishlist:", error);
     }
   };
-
-  const [imageUrls, setImageUrls] = useState([]);
 
   useEffect(() => {
     if (id) {
@@ -119,149 +110,36 @@ const ProductDetailPage = () => {
   useEffect(() => {
     if (!product) return;
 
-    const possibleUrls = [
-      `.jpg`, `.png`, `.jpeg`
-    ].flatMap(ext =>
-      [1, 2, 3, 4].map(i =>
+    const possibleUrls = ['.jpg', '.png', '.jpeg']
+      .flatMap(ext => [1, 2, 3, 4].map(i => 
         `${BASE_URL}/static/uploaded_images/product_image_${i}_${product.id}${ext}`
-      )
-    );
+      ));
 
-    const checkImage = url =>
-      new Promise(resolve => {
-        const img = new Image();
-        img.onload = () => resolve(url);
-        img.onerror = () => resolve(null);
-        img.src = url;
-      });
+    const checkImage = (url: string) => new Promise<string | null>((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(url);
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
 
     Promise.all(possibleUrls.map(checkImage)).then(urls => {
-      setImageUrls(urls.filter(Boolean));
+      setImageUrls(urls.filter(Boolean) as string[]);
     });
   }, [product]);
 
-  const fetchCartAndProducts = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('No token found');
-
-      if (!product || !product.id) {
-        console.warn('Product is not loaded yet.');
-        return;
-      }
-
-      const cartResponse = await fetch(`${BASE_URL}/cart`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!cartResponse.ok) throw new Error('Failed to fetch cart');
-
-      const cartData = await cartResponse.json();
-      const productId = product.id;
-      const cartItem = cartData.find(item => item.product_id === productId);
-
-      setQuantity(cartItem ? Math.max(1, cartItem.quantity || 0) : 1);
-    } catch (error) {
-      console.error('Error fetching cart:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (product?.id) {
-      fetchCartAndProducts();
-    }
-  }, [product]);
-
-  const handleAddToCart = () => {
-    if (!product) return;
-
-    const payload = {
-      product_id: product.id,
-      quantity,
-      rental_duration: product.type === "sale" ? 0 : rental_duration,
-      type: product.type,
-      user_id: 1
-    };
-
-    const token = localStorage.getItem("token");
-
-    fetch(`${BASE_URL}/cart`, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}` 
-      },
-      body: JSON.stringify(payload),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        addToCart(product);
-        toast({ title: "Added to cart" });
-        fetchCartCount();
-      })
-      .catch((error) => {
-        toast({
-          title: "Error adding to cart",
-          description: error.message,
-          variant: "destructive",
-        });
-      });
-  };
-
-  const handleRemoveFromCart = () => {
-    if (!product) return;
-
-    const token = localStorage.getItem("token");
-
-    fetch(`${BASE_URL}/cart/cart/remove`, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        product_id: product.id,
-        user_id: 1,
-        type: product.type,
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        toast({ title: "Removed from cart" });
-        fetchCartCount();
-      })
-      .catch((error) => {
-        toast({
-          title: "Error removing from cart",
-          description: error.message,
-          variant: "destructive",
-        });
-      });
-  };
-
   const handleShare = () => {
     if (navigator.share) {
-      navigator
-        .share({
-          title: product.name,
-          text: product.description,
-          url: window.location.href,
-        })
-        .then(() => {
-          toast({
-            title: "Shared successfully",
-          variant: "default",
-          });
-        })
-        .catch((error) => {
-          toast({
-            title: "Error sharing",
-            description: error.message,
-            variant: "destructive",
-          });
+      navigator.share({
+        title: product?.name || '',
+        text: product?.description || '',
+        url: window.location.href,
+      }).catch((error) => {
+        toast({
+          title: "Error sharing",
+          description: error.message,
+          variant: "destructive",
         });
+      });
     } else {
       navigator.clipboard.writeText(window.location.href);
       toast({
@@ -271,8 +149,16 @@ const ProductDetailPage = () => {
     }
   };
 
-  const handleSlideChange = (swiper) => {
+  const handleSlideChange = (swiper: any) => {
     setActiveSlideIndex(swiper.realIndex);
+  };
+
+  const handlePlaceOrder = () => {
+    toast({
+      title: "Order Placed Successfully",
+      description: "Our distributor will contact you soon to confirm your order details.",
+      variant: "default",
+    });
   };
 
   if (!product) {
@@ -300,7 +186,6 @@ const ProductDetailPage = () => {
       </Button>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-        {/* Enhanced Product Image Slider */}
         <div className="w-full h-full max-h-[400px] relative">
           {imageUrls.length > 0 ? (
             <>
@@ -339,7 +224,6 @@ const ProductDetailPage = () => {
           )}
         </div>
 
-        {/* Product Details */}
         <div>
           <div className="mb-6">
             <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
@@ -361,11 +245,6 @@ const ProductDetailPage = () => {
             )}
 
             <p className="text-gray-700 mb-4">{product.description}</p>
-
-            <div className="flex items-center text-green-600 mb-6">
-              <Check className="h-5 w-5 mr-2" />
-              <span>In Stock</span>
-            </div>
           </div>
 
           <div className="space-y-6">
@@ -388,50 +267,20 @@ const ProductDetailPage = () => {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Quantity
-              </label>
-              <div className="flex items-center space-x-3">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  disabled={quantity <= 1}
-                >
-                  -
-                </Button>
-                <span className="w-8 text-center">{quantity}</span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setQuantity(quantity + 1)}
-                >
-                  +
-                </Button>
-                <Button variant="destructive" onClick={handleRemoveFromCart}>
-                  Remove from Cart
-                </Button>
-              </div>
-            </div>
-
             <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
               <Button
                 className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
-                onClick={handleAddToCart}
+                onClick={handlePlaceOrder}
               >
-                <ShoppingCart className="mr-2 h-4 w-4" />
-                {product.type === "rent" ? "Rent Now" : "Add to Cart"}
+                Place Order
               </Button>
               <Button
                 variant="outline"
-                className={`w-full sm:w-auto ${isInWishlist(product.id) ? "text-red-500 border-red-500" : ""
-                  }`}
+                className={`w-full sm:w-auto ${isInWishlist(product.id) ? "text-red-500 border-red-500" : ""}`}
                 onClick={() => toggleWishlist(product)}
               >
                 <Heart
-                  className={`mr-2 h-4 w-4 ${isInWishlist(product.id) ? "fill-red-500" : ""
-                    }`}
+                  className={`mr-2 h-4 w-4 ${isInWishlist(product.id) ? "fill-red-500" : ""}`}
                 />
                 {isInWishlist(product.id) ? "Remove from Wishlist" : "Add to Wishlist"}
               </Button>
@@ -462,7 +311,6 @@ const ProductDetailPage = () => {
         </div>
       </div>
 
-      {/* Product Details Tabs */}
       <Tabs defaultValue="specifications" className="mt-12">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="specifications">Specifications</TabsTrigger>
@@ -502,17 +350,7 @@ const ProductDetailPage = () => {
               <p className="text-gray-700">
                 This {product.brand} {product.name} is available for
                 {product.type === "rent" ? " rent" : " purchase"} and comes with a standard 1-year warranty.
-                All our laptops are thoroughly tested and certified for quality assurance.
               </p>
-              <div className="mt-4">
-                <h4 className="font-medium mb-2">Package Includes:</h4>
-                <ul className="list-disc list-inside text-gray-700 space-y-1">
-                  <li>{product.name} Laptop</li>
-                  <li>Power Adapter</li>
-                  <li>User Manual</li>
-                  <li>Warranty Card</li>
-                </ul>
-              </div>
             </div>
           </div>
         </TabsContent>
@@ -520,38 +358,26 @@ const ProductDetailPage = () => {
           <h3 className="font-semibold mb-4">Key Features</h3>
           <ul className="space-y-4">
             <li className="flex items-start">
-              <Check className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
               <div>
                 <p className="font-medium">High Performance</p>
                 <p className="text-gray-600">
-                  Powered by {product.specs.processor} for exceptional performance and multitasking.
+                  Powered by {product.specs.processor} for exceptional performance.
                 </p>
               </div>
             </li>
             <li className="flex items-start">
-              <Check className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
               <div>
                 <p className="font-medium">Crystal Clear Display</p>
                 <p className="text-gray-600">
-                  Enjoy vivid colors and sharp details with {product.specs.display}.
+                  Enjoy vivid colors with {product.specs.display}.
                 </p>
               </div>
             </li>
             <li className="flex items-start">
-              <Check className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
               <div>
                 <p className="font-medium">Ample Storage</p>
                 <p className="text-gray-600">
-                  Store all your files and applications with {product.specs.storage}.
-                </p>
-              </div>
-            </li>
-            <li className="flex items-start">
-              <Check className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
-              <div>
-                <p className="font-medium">Smooth Graphics</p>
-                <p className="text-gray-600">
-                  Experience smooth visuals with {product.specs.graphics}.
+                  {product.specs.storage} for all your files.
                 </p>
               </div>
             </li>
