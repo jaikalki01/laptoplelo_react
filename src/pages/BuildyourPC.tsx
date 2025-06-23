@@ -20,15 +20,50 @@ const BuildYourPC = () => {
   ];
 
   const [formData, setFormData] = useState({});
+  const [modal, setModal] = useState({ isOpen: false, message: '', isError: false });
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Submitted Build:', formData);
-    // You can send this data to your backend here
+
+    try {
+      const response = await fetch('http://localhost:8001/api/pcbuilds/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        setModal({
+          isOpen: true,
+          message: 'Build submitted successfully!',
+          isError: false,
+        });
+        setFormData({}); // Reset form data
+      } else {
+        setModal({
+          isOpen: true,
+          message: 'Failed to submit build.',
+          isError: true,
+        });
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      setModal({
+        isOpen: true,
+        message: 'Error submitting build.',
+        isError: true,
+      });
+    }
+  };
+
+  const closeModal = () => {
+    setModal({ isOpen: false, message: '', isError: false });
   };
 
   return (
@@ -48,10 +83,13 @@ const BuildYourPC = () => {
           <form onSubmit={handleSubmit} className="space-y-5">
             {fields.map((field, i) => (
               <div key={i}>
-                <label className="block text-sm font-semibold mb-1 text-purple-300">{field.label}</label>
+                <label className="block text-sm font-semibold mb-1 text-purple-300">
+                  {field.label}
+                </label>
                 <input
                   type="text"
                   name={field.name}
+                  value={formData[field.name] || ""}
                   onChange={handleChange}
                   className="w-full bg-[#2b2a3d] text-white border border-purple-600 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 animate-glow"
                   placeholder={`Enter ${field.label}`}
@@ -68,6 +106,24 @@ const BuildYourPC = () => {
           </form>
         </div>
       </div>
+
+      {/* Modal Dialog */}
+      {modal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-[#1c1c2e] rounded-lg p-6 max-w-sm w-full text-white shadow-lg border border-purple-600">
+            <h3 className={`text-lg font-bold mb-4 ${modal.isError ? 'text-red-400' : 'text-green-400'}`}>
+              {modal.isError ? 'Error' : 'Success'}
+            </h3>
+            <p className="mb-6">{modal.message}</p>
+            <button
+              onClick={closeModal}
+              className="w-full bg-purple-600 text-white font-bold py-2 rounded-lg hover:bg-purple-700 transition duration-300"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

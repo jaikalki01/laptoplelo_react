@@ -4,7 +4,7 @@ const RefundPolicy = () => {
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 text-gray-800">
       <h1 className="text-4xl font-bold text-[rgb(155,135,245)] mb-4 text-left">
-        Refund and Return Policy – LaptopLelo.in
+        Refund and Return Policy – mumbaipcmart.in
       </h1>
       <p className="mb-8 text-sm text-gray-600 text-left">Last updated: May 6, 2025</p>
 
@@ -34,7 +34,7 @@ const RefundPolicy = () => {
 
         <div className="bg-gray-50 p-6 rounded-xl shadow-sm text-left">
           <h1 className="text-2xl font-semibold text-[rgb(155,135,245)] mb-3">3. Return Process</h1>
-          <p className="text-gray-700">To initiate a return, customers must contact <a href="mailto:support@laptoplelo.in" className="text-[rgb(155,135,245)] underline">support@laptoplelo.in</a> with:</p>
+          <p className="text-gray-700">To initiate a return, customers must contact <a href="mailto:support@mumbaipcmart.in" className="text-[rgb(155,135,245)] underline">support@mumbaipcmart.in</a> with:</p>
           <ul className="list-disc list-inside space-y-1 text-gray-700 mt-2">
             <li>Order ID</li>
             <li>Description and photo/video of the issue</li>
@@ -47,7 +47,7 @@ const RefundPolicy = () => {
         <div className="bg-gray-50 p-6 rounded-xl shadow-sm text-left">
           <h1 className="text-2xl font-semibold text-[rgb(155,135,245)] mb-3">4. Inspection and Approval</h1>
           <p className="text-gray-700">
-            Returned products will be inspected by the vendor or LaptopLelo.in team. Approval or rejection of the return/refund will be communicated within 5–7 business days of receiving the item.
+            Returned products will be inspected by the vendor or mumbaipcmart.in team. Approval or rejection of the return/refund will be communicated within 5–7 business days of receiving the item.
           </p>
         </div>
 
@@ -79,9 +79,9 @@ const RefundPolicy = () => {
           <h1 className="text-2xl font-semibold text-[rgb(155,135,245)] mb-3">8. Contact Us</h1>
           <p className="text-gray-700">For any return or refund-related assistance:</p>
           <ul className="list-none mt-2 text-gray-700">
-            <li><strong>LaptopLelo.in</strong></li>
-            <li>Email: <a href="mailto:support@laptoplelo.in" className="text-[rgb(155,135,245)] underline">support@laptoplelo.in</a></li>
-            <li>Address: [Insert Business Address Here]</li>
+            <li><strong>mumbaipcmart.in</strong></li>
+            <li>Email: <a href="mailto:support@mumbaipcmart.in" className="text-[rgb(155,135,245)] underline">support@mumbaipcmart.in</a></li>
+            <li>Address: Jaikalki Technology Pvt Ltd Anand India Business Hub, Mira Road, Mumbai, India</li>
           </ul>
         </div>
       </div>
