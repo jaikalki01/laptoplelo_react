@@ -29,6 +29,7 @@ import ReportsPage from "@/pages/admin/ReportsPage";
 import Analytics from "@/pages/admin/Analytics";
 import AdminProfile from "@/pages/admin/AdminProfile";
 import AdminSettings from "@/pages/admin/AdminSettings";
+import Orders from "@/pages/admin/Orders";
 import UserProfile from "@/pages/user/UserProfile";
 import UserAddress from "@/pages/user/UserAddress";
 import UserKYC from "@/pages/user/UserKYC";
@@ -213,6 +214,7 @@ const App = () => (
                   <Route path="/admin/analytics" element={<Analytics />} />
                   <Route path="/admin/profile" element={<AdminProfile />} />
                   <Route path="/admin/settings" element={<AdminSettings />} />
+                  <Route path="/admin/orders" element={<Orders />} />
                   <Route path="/edit-product/:productId" element={<EditProductPage />} />
 
                   {/* User Routes */}

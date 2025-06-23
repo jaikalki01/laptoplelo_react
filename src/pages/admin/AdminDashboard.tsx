@@ -52,6 +52,7 @@ const AdminDashboard = ({ children }: AdminDashboardProps) => {
     // { name: "Offer Management", icon: <Tag size={20} />, path: "/admin/offers" },
     { name: "Sales Transactions", icon: <ShoppingCart size={20} />, path: "/admin/transactions" },
     { name: "Rental Management", icon: <Clock size={20} />, path: "/admin/rentals" },
+    { name: "Orders", icon: <Package size={20} />, path: "/admin/orders" },
     { name: "Reports", icon: <FileText size={20} />, path: "/admin/reports" },
     { name: "Analytics", icon: <BarChart2 size={20} />, path: "/admin/analytics" },
     { name: "Profile", icon: <User size={20} />, path: "/admin/profile" },
