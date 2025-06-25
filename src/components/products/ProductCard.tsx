@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Heart, ShoppingCart } from "lucide-react";
@@ -8,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import axios from "axios";
-import { useWishlist  } from "../layout/wishlistprovider";
+import { useWishlist } from "../layout/wishlistprovider";
 import { BASE_URL } from "@/routes";
+import { useToast } from "@/components/ui/use-toast";
 
 interface ProductCardProps {
   product: Product;
@@ -17,49 +17,31 @@ interface ProductCardProps {
 
 const ProductCard = ({ product }: ProductCardProps) => {
   const { fetchWishlistCount } = useWishlist();
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [wishlist, setWishlist] = useState([]);
-
+  const { addToCart } = useApp();
+  const { toast } = useToast();
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [wishlist, setWishlist] = useState<number[]>([]);
+  const [showRentPrice, setShowRentPrice] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
-    const loadImage = () => {
-      const extensions = ["jpg", "jpeg", "png"];
-      let found = false;
+    if (product.image) {
+      setImageUrl(`${BASE_URL}/static/uploaded_images/${product.image}`);
+    } else {
+      setImageUrl("/default-product.png");
+    }
+  }, [product.id, product.image]);
 
-      extensions.forEach(ext => {
-        const url = `${BASE_URL}/static/uploaded_images/product_image_1_${product.id}.${ext}`;
-        const img = new Image();
-        img.src = url;
-
-        img.onload = () => {
-          if (!found) {
-            found = true;
-            setImageUrl(url);
-          }
-        };
-
-        img.onerror = () => {
-          // Try next extension silently
-        };
-      });
-    };
-
-    loadImage();
-  }, [product.id]);
-
-
-
-  const token = localStorage.getItem("token"); // or use context if needed
+  const token = localStorage.getItem("token");
   const headers = {
     Authorization: `Bearer ${token}`,
   };
 
   useEffect(() => {
-    // Fetch wishlist on component mount
     axios
       .get(`${BASE_URL}/wishlist/wishlist`, { headers })
       .then((res) => {
-        const productIds = res.data.wishlist.map((p) => p.id);
+        const productIds = res.data.wishlist.map((p: any) => Number(p.id));
         setWishlist(productIds);
       })
       .catch((err) => {
@@ -67,10 +49,10 @@ const ProductCard = ({ product }: ProductCardProps) => {
       });
   }, []);
 
-  const isInWishlist = (id) => wishlist.includes(id);
+  const isInWishlist = (id: number) => wishlist.includes(id);
 
-  const toggleWishlist = async (product) => {
-    const productId = product.id;
+  const toggleWishlist = async (product: Product) => {
+    const productId: number = Number(product.id);
     const url = `${BASE_URL}/wishlist/wishlist/${productId}`;
 
     try {
@@ -82,22 +64,67 @@ const ProductCard = ({ product }: ProductCardProps) => {
         setWishlist((prev) => [...prev, productId]);
       }
       fetchWishlistCount();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating wishlist:", error.response?.data || error.message);
     }
   };
 
+  const getBadgeColor = () => {
+    switch (product.type) {
+      case "rent":
+        return "bg-blue-600";
+      case "sale":
+        return "bg-green-600";
+      case "both":
+        return "bg-purple-600";
+      default:
+        return "bg-gray-600";
+    }
+  };
 
-  // Optionally handle the case when imageUrl is null
-  // if (!imageUrl) {
-  //   console.log('Image URL not available');
-  // }
-  const { addToCart, addToWishlist } = useApp();
-  const [isHovered, setIsHovered] = useState(false);
+  const getBadgeText = () => {
+    switch (product.type) {
+      case "rent":
+        return "For Rent";
+      case "sale":
+        return "For Sale";
+      case "both":
+        return "Buy or Rent";
+      default:
+        return product.type;
+    }
+  };
+
+  const togglePriceDisplay = () => {
+    if (product.type === "both") {
+      setShowRentPrice(!showRentPrice);
+    }
+  };
+
+  const handleAddToCart = () => {
+    const cartItem = {
+      ...product,
+      type: product.type === "both" ? (showRentPrice ? "rent" : "sale") : product.type,
+      rental_duration: product.type === "rent" || (product.type === "both" && showRentPrice) ? 30 : 0
+    };
+    
+    addToCart(cartItem);
+    toast({
+      title: "Added to cart",
+      description: `${product.name} has been added to your cart`,
+      variant: "default",
+    });
+  };
+
+  const getButtonText = () => {
+    if (product.type === "rent") return "Rent Now";
+    if (product.type === "sale") return "Buy Now";
+    return showRentPrice ? "Rent Now" : "Add to Cart";
+  };
 
   return (
     <Card
-      className="overflow-hidden transition-all duration-300 h-full flex flex-col"
+      className="overflow-hidden transition-all duration-300 h-full flex flex-col hover:shadow-lg"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -107,26 +134,31 @@ const ProductCard = ({ product }: ProductCardProps) => {
             <img
               src={imageUrl}
               alt={product.name}
-              className={`w-full h-full object-cover transition-transform duration-300 ${isHovered ? "scale-110" : "scale-100"
-                }`}
+              className={`w-full h-full object-cover transition-transform duration-300 ${
+                isHovered ? "scale-110" : "scale-100"
+              }`}
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "/default-product.png";
+              }}
             />
           </div>
         </Link>
-        <Badge
-          className={`absolute top-2 left-2 ${product.type === "rent" ? "bg-primary" : "bg-green-600"
-            }`}
-        >
-          {product.type === "rent" ? "For Rent" : "For Sale"}
+        <Badge className={`absolute top-2 left-2 ${getBadgeColor()}`}>
+          {getBadgeText()}
         </Badge>
         <Button
           size="icon"
           variant="ghost"
           className="absolute top-2 right-2 bg-white/80 hover:bg-white rounded-full"
-          onClick={() => toggleWishlist(product)}
+          onClick={(e) => {
+            e.preventDefault();
+            toggleWishlist(product);
+          }}
         >
           <Heart
-            className={`h-5 w-5 ${isInWishlist(product.id) ? "fill-red-500 text-red-500" : ""
-              }`}
+            className={`h-5 w-5 ${
+              isInWishlist(Number(product.id)) ? "fill-red-500 text-red-500" : ""
+            }`}
           />
         </Button>
       </div>
@@ -141,10 +173,13 @@ const ProductCard = ({ product }: ProductCardProps) => {
         <p className="text-sm line-clamp-2 text-gray-600 mb-4">
           {product.description}
         </p>
-        <div className="flex justify-between items-center">
+        <div 
+          className={`flex justify-between items-center ${product.type === "both" ? "cursor-pointer" : ""}`}
+          onClick={togglePriceDisplay}
+        >
           {product.type === "sale" ? (
             <p className="font-bold text-lg">₹{product.price.toLocaleString()}</p>
-          ) : (
+          ) : product.type === "rent" ? (
             <div>
               <p className="font-bold text-lg">
                 ₹{product.rental_price?.toLocaleString()}/month
@@ -153,20 +188,43 @@ const ProductCard = ({ product }: ProductCardProps) => {
                 ₹{product.price.toLocaleString()} outright
               </p>
             </div>
+          ) : (
+            <div>
+              {showRentPrice ? (
+                <>
+                  <p className="font-bold text-lg">
+                    ₹{product.rental_price?.toLocaleString()}/month
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Click to see purchase price
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-bold text-lg">
+                    ₹{product.price.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Click to see rental price
+                  </p>
+                </>
+              )}
+            </div>
           )}
         </div>
       </CardContent>
 
       <CardFooter className="p-4 pt-0">
-        <Link className="product-card-button" to={`/product/${product.id}`}>
-          <Button
-            onClick={() => addToCart(product)}
-            className="w-full bg-primary hover:bg-primary/90"
-          >
-            <ShoppingCart className="h-4 w-4 mr-2" />
-            {product.type === "rent" ? "Rent Now" : "Add to Cart"}
-          </Button>
-        </Link>
+        <Button
+          onClick={(e) => {
+            e.preventDefault();
+            handleAddToCart();
+          }}
+          className="w-full bg-primary hover:bg-primary/90"
+        >
+          <ShoppingCart className="h-4 w-4 mr-2" />
+          {getButtonText()}
+        </Button>
       </CardFooter>
     </Card>
   );

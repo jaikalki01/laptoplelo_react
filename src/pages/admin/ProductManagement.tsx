@@ -1,18 +1,15 @@
-
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import {
   Package,
   Search,
-  Filter,
   Edit,
   Trash2,
   Plus,
   CheckCircle,
   XCircle,
 } from "lucide-react";
-import { Link } from 'react-router-dom';  // Make sure to import Link
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -27,51 +24,43 @@ interface Product {
   brand: string;
   price: number;
   available: boolean;
-  type: string;  // Replace with the correct field names as per your actual data
+  type: string;
   image: string;
-  rental_price: number
+  rental_price: number;
 }
 
 const ProductManagement = () => {
   const { user } = useApp();
   const navigate = useNavigate();
   const { toast } = useToast();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterAvailability, setFilterAvailability] = useState("all");
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);  // Store the filtered products
-  const [loading, setLoading] = useState(true);  // Loading state for fetching products
-  const [formData, setFormData] = useState<Product>({
-    id: "",
-    name: "",
-    description: "",
-    brand: "",
-    price: 0,
-    available: true,
-    type: "sale", // Or another default value
-    image: "",
-    rental_price: 0,
-  });
-  
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // If user is not admin, redirect to login
-  if (!user || user.role !== "admin") {
-    navigate("/login");
-    return null;
-  }
+  // Redirect non-admin users
+  useEffect(() => {
+    if (!user || user.role !== "admin") {
+      navigate("/login");
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     const fetchProducts = async () => {
-      const productList = await products();  // Fetch products asynchronously
+      setLoading(true);
+      const productList = await products();
       setLoading(false);
 
-      const filtered = productList.filter(p => {
+      const filtered = productList.filter((p) => {
         const matchesSearch =
           p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           p.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
           p.brand.toLowerCase().includes(searchTerm.toLowerCase());
 
-        const matchesType = filterType === "all" || p.type === filterType;
+        const matchesType =
+          filterType === "all" || p.type.toLowerCase() === filterType;
 
         const matchesAvailability =
           filterAvailability === "all" ||
@@ -81,15 +70,15 @@ const ProductManagement = () => {
         return matchesSearch && matchesType && matchesAvailability;
       });
 
-      setFilteredProducts(filtered);  // Update filtered products state
+      setFilteredProducts(filtered);
     };
 
-    fetchProducts();  // Call the fetchProducts function when component mounts or filters change
-  }, [searchTerm, filterType, filterAvailability]);  // Re-run this effect when these values change
+    fetchProducts();
+  }, [searchTerm, filterType, filterAvailability]);
 
   const handleDelete = async (productId: string) => {
     const token = localStorage.getItem("token");
-  
+
     try {
       const response = await fetch(`${BASE_URL}/products/${productId}`, {
         method: "DELETE",
@@ -97,19 +86,18 @@ const ProductManagement = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-  
-      if (!response.ok) {
-        throw new Error("Failed to delete product");
-      }
-  
+
+      if (!response.ok) throw new Error("Failed to delete product");
+
       toast({
         title: "Product deleted",
         description: "Product has been deleted successfully",
       });
-  
-      // Optionally refresh product list here
-      // await fetchProducts();
-  
+
+      // Remove the deleted product from the list
+      setFilteredProducts((prev) =>
+        prev.filter((product) => product.id !== productId)
+      );
     } catch (error) {
       toast({
         title: "Error",
@@ -118,50 +106,6 @@ const ProductManagement = () => {
       });
     }
   };
-  
-
-  // const handleEdit = async (productId: string) => {
-  //   toast({
-  //     title: "Updating product...",
-  //     description: "Please wait while we update the product",
-  //   });
-  
-  //   try {
-  //     const token = localStorage.getItem("token");
-  
-  //     const response = await fetch(`${BASE_URL}/products/${productId}`, {
-  //       method: "PUT",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         Authorization: `Bearer ${token}`,
-  //       },
-  //       body: JSON.stringify({
-  //         name: formData.name,
-  //         description: formData.description,
-  //         price: formData.price,
-  //         rental_price: formData.rental_price,
-  //         type: formData.type,
-  //         brand: formData.brand,
-  //         available: formData.available,
-  //         image: formData.image, // If you are uploading an image
-  //       }),
-  //     });
-  
-  //     if (!response.ok) throw new Error("Update failed");
-  
-  //     toast({
-  //       title: "Product updated",
-  //       description: "Product has been successfully updated",
-  //     });
-  //   } catch (err) {
-  //     toast({
-  //       title: "Error",
-  //       description: "Failed to update product",
-  //       variant: "destructive",
-  //     });
-  //   }
-  // };
-  
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -170,7 +114,6 @@ const ProductManagement = () => {
       maximumFractionDigits: 0,
     }).format(price);
   };
-
 
   return (
     <AdminDashboard>
@@ -186,22 +129,21 @@ const ProductManagement = () => {
           </Link>
         </div>
 
+        {/* Filters */}
         <div className="bg-white rounded-lg shadow mb-6">
           <div className="p-4 border-b">
             <h2 className="font-medium">Filters</h2>
           </div>
           <div className="p-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                  <Input
-                    placeholder="Search products..."
-                    className="pl-10"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <Input
+                  placeholder="Search products..."
+                  className="pl-10"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
               <div>
                 <select
@@ -212,6 +154,7 @@ const ProductManagement = () => {
                   <option value="all">All Types</option>
                   <option value="sale">For Sale</option>
                   <option value="rent">For Rent</option>
+                  <option value="both">For Both</option>
                 </select>
               </div>
               <div>
@@ -229,6 +172,7 @@ const ProductManagement = () => {
           </div>
         </div>
 
+        {/* Products Table */}
         <div className="bg-white rounded-lg shadow">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -253,23 +197,35 @@ const ProductManagement = () => {
                         alt={product.name}
                         className="w-16 h-12 object-cover rounded"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = "/default-product-image.png";
+                          (e.target as HTMLImageElement).src =
+                            "/default-product-image.png";
                         }}
                       />
                     </td>
                     <td className="px-6 py-4">{product.name}</td>
                     <td className="px-6 py-4">{product.brand}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs ${product.type === 'sale'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-green-100 text-green-700'
-                        }`}>
-                        {product.type === 'sale' ? 'For Sale' : 'For Rent'}
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs ${
+                          product.type === "sale"
+                            ? "bg-blue-100 text-blue-700"
+                            : product.type === "rent"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-purple-100 text-purple-700"
+                        }`}
+                      >
+                        {product.type === "sale"
+                          ? "For Sale"
+                          : product.type === "rent"
+                          ? "For Rent"
+                          : "For Both"}
                       </span>
                     </td>
                     <td className="px-6 py-4">{formatPrice(product.price)}</td>
                     <td className="px-6 py-4">
-                      {product.rental_price ? formatPrice(product.rental_price) : '-'}
+                      {product.rental_price
+                        ? formatPrice(product.rental_price)
+                        : "-"}
                     </td>
                     <td className="px-6 py-4">
                       {product.available ? (
@@ -306,7 +262,7 @@ const ProductManagement = () => {
               </tbody>
             </table>
           </div>
-          {filteredProducts.length === 0 && (
+          {!loading && filteredProducts.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               No products found matching your search criteria.
             </div>

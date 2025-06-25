@@ -5,7 +5,7 @@ export interface Product {
   description: string;
   price: number;
   rental_price: number;
-  type: 'sale' | 'rent';
+   type: 'sale' | 'rent' | 'both'; 
   image: string;
   brand: string;
   specs: {
@@ -47,6 +47,7 @@ export interface CartItem {
 
 export interface WishlistItem {
   product: Product;
+  
 }
 
 export interface Transaction {

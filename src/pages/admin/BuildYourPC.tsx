@@ -45,7 +45,7 @@ const BuildYourPC = () => {
   useEffect(() => {
     const token = localStorage.getItem("token");
 
-    fetch(`${BASE_URL}/pcbuilds`, {
+    fetch(`${BASE_URL}/api/pcbuilds`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

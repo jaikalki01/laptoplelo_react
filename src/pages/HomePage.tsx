@@ -35,7 +35,7 @@ const HomePage = () => {
         setProductList(fetchedProducts);
         setFilteredProducts(fetchedProducts);
       } catch (error) {
-        //console.error('Error fetching products:', error);
+        console.error('Error fetching products:', error);
       }
     };
 
@@ -45,6 +45,8 @@ const HomePage = () => {
   useEffect(() => {
     const filtered = activeTab === "all"
       ? productList 
+      : activeTab === "both"
+      ? productList.filter(p => p.type === "both")
       : productList.filter(p => p.type === activeTab);
     
     setFilteredProducts(filtered);
@@ -99,7 +101,7 @@ const HomePage = () => {
                 technology you need without the hassle.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link to="/products/sale">
+                <Link to="/products">
                   <Button className="bg-primary hover:bg-primary/90">
                     Shop Now
                   </Button>
@@ -107,6 +109,11 @@ const HomePage = () => {
                 <Link to="/products/rent">
                   <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
                     Rent a Laptop
+                  </Button>
+                </Link>
+                <Link to="/products/both">
+                  <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
+                    Buy & Rent Options
                   </Button>
                 </Link>
               </div>
@@ -134,10 +141,11 @@ const HomePage = () => {
 
           <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
             <div className="flex justify-center mb-8">
-              <TabsList className="grid grid-cols-3 w-full max-w-md">
+              <TabsList className="grid grid-cols-4 w-full max-w-lg">
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="sale">For Sale</TabsTrigger>
                 <TabsTrigger value="rent">For Rent</TabsTrigger>
+                <TabsTrigger value="both">Both</TabsTrigger>
               </TabsList>
             </div>
 
@@ -158,6 +166,14 @@ const HomePage = () => {
             </TabsContent>
 
             <TabsContent value="rent" className="mt-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {filteredProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="both" className="mt-0">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {filteredProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
@@ -268,12 +284,12 @@ const HomePage = () => {
             needs. Get started today!
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/products/sale">
+            <Link to="/products">
               <Button variant="secondary">Shop Now</Button>
             </Link>
             <Link to="/contact">
-            <Button variant="outline" className="border-white text-[rgb(155,135,245)] ">
-            Contact Us
+              <Button variant="outline" className="border-white text-white hover:bg-white/10">
+                Contact Us
               </Button>
             </Link>
           </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Heart,
@@ -21,11 +21,10 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay } from 'swiper/modules';
-import SwiperCore from 'swiper';
 import 'swiper/css';
 import 'swiper/css/autoplay';
 import axios from 'axios';
-import { useCart } from "../components/layout/cartprovider"
+import { useCart } from "../components/layout/cartprovider";
 import { useWishlist } from "../components/layout/wishlistprovider";
 import { BASE_URL } from "@/routes";
 
@@ -37,6 +36,7 @@ interface Product {
   rental_price: number;
   type: "sale" | "rent";
   image: string;
+  images?: Array<{ url: string }>;
   brand: string;
   specs: {
     processor: string;
@@ -53,34 +53,35 @@ const ProductDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { products, addToCart, addToWishlist } = useApp();
-  const [type, setType] = useState("sale");
+  const { addToCart } = useApp();
   const [product, setProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [rental_duration, setRentalDuration] = useState(30);
-  const [wishlist, setWishlist] = useState([]);
-  const { fetchCartCount } = useCart()
+  const [wishlist, setWishlist] = useState<string[]>([]);
+  const { fetchCartCount } = useCart();
   const { fetchWishlistCount } = useWishlist();
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
 
   const token = localStorage.getItem("token");
   const headers = {
     Authorization: `Bearer ${token}`,
   };
 
- useEffect(() => {
-  axios.get<{ wishlist: { id: string }[] }>(`${BASE_URL}/wishlist/wishlist`, { headers })
-    .then((res) => {
-      const productIds = res.data.wishlist.map((p) => p.id);
-      setWishlist(productIds);
-    })
-    .catch((err) => {
-      console.error("Failed to load wishlist:", err);
-    });
-}, []);
-  const isInWishlist = (id) => wishlist.includes(id);
+  useEffect(() => {
+    axios.get<{ wishlist: { id: string }[] }>(`${BASE_URL}/wishlist/wishlist`, { headers })
+      .then((res) => {
+        const productIds = res.data.wishlist.map((p) => p.id);
+        setWishlist(productIds);
+      })
+      .catch((err) => {
+        console.error("Failed to load wishlist:", err);
+      });
+  }, []);
 
-  const toggleWishlist = async (product) => {
+  const isInWishlist = (id: string) => wishlist.includes(id);
+
+  const toggleWishlist = async (product: Product) => {
     const productId = product.id;
     const url = `${BASE_URL}/wishlist/wishlist/${productId}`;
 
@@ -92,13 +93,11 @@ const ProductDetailPage = () => {
         await axios.post(url, null, { headers });
         setWishlist((prev) => [...prev, productId]);
       }
-      fetchWishlistCount()
+      fetchWishlistCount();
     } catch (error) {
-      console.error("Error updating wishlist:", error.response?.data || error.message);
+      console.error("Error updating wishlist:", error);
     }
   };
-
-  const [imageUrls, setImageUrls] = useState([]);
 
   useEffect(() => {
     if (id) {
@@ -106,6 +105,15 @@ const ProductDetailPage = () => {
         .then((res) => res.json())
         .then((data) => {
           setProduct(data);
+          
+          // Handle both single image and multiple images
+          let urls: string[] = [];
+          if (data.images && data.images.length > 0) {
+            urls = data.images.map(img => `${BASE_URL}/static/uploaded_images/${img.url}`);
+          } else if (data.image) {
+            urls = [`${BASE_URL}/static/uploaded_images/${data.image}`];
+          }
+          setImageUrls(urls);
         })
         .catch((error) => {
           toast({
@@ -116,72 +124,14 @@ const ProductDetailPage = () => {
     }
   }, [id]);
 
-  useEffect(() => {
-    if (!product) return;
-
-    const possibleUrls = [
-      `.jpg`, `.png`, `.jpeg`
-    ].flatMap(ext =>
-      [1, 2, 3, 4].map(i =>
-        `${BASE_URL}/static/uploaded_images/product_image_${i}_${product.id}${ext}`
-      )
-    );
-
-    const checkImage = url =>
-      new Promise(resolve => {
-        const img = new Image();
-        img.onload = () => resolve(url);
-        img.onerror = () => resolve(null);
-        img.src = url;
-      });
-
-    Promise.all(possibleUrls.map(checkImage)).then(urls => {
-      setImageUrls(urls.filter(Boolean));
-    });
-  }, [product]);
-
-  const fetchCartAndProducts = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('No token found');
-
-      if (!product || !product.id) {
-        console.warn('Product is not loaded yet.');
-        return;
-      }
-
-      const cartResponse = await fetch(`${BASE_URL}/cart`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!cartResponse.ok) throw new Error('Failed to fetch cart');
-
-      const cartData = await cartResponse.json();
-      const productId = product.id;
-      const cartItem = cartData.find(item => item.product_id === productId);
-
-      setQuantity(cartItem ? Math.max(1, cartItem.quantity || 0) : 1);
-    } catch (error) {
-      console.error('Error fetching cart:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (product?.id) {
-      fetchCartAndProducts();
-    }
-  }, [product]);
-
-  const handleAddToCart = () => {
+  const handleAddToCart = (productType: "sale" | "rent" = product?.type || "sale") => {
     if (!product) return;
 
     const payload = {
       product_id: product.id,
       quantity,
-      rental_duration: product.type === "sale" ? 0 : rental_duration,
-      type: product.type,
+      rental_duration: productType === "sale" ? 0 : rental_duration,
+      type: productType,
       user_id: 1
     };
 
@@ -196,9 +146,12 @@ const ProductDetailPage = () => {
       body: JSON.stringify(payload),
     })
       .then((res) => res.json())
-      .then((data) => {
+      .then(() => {
         addToCart(product);
-        toast({ title: "Added to cart" });
+        toast({ 
+          title: productType === "rent" ? "Added to cart for rent" : "Added to cart for purchase",
+          variant: "default"
+        });
         fetchCartCount();
       })
       .catch((error) => {
@@ -228,7 +181,7 @@ const ProductDetailPage = () => {
       }),
     })
       .then((res) => res.json())
-      .then((data) => {
+      .then(() => {
         toast({ title: "Removed from cart" });
         fetchCartCount();
       })
@@ -242,6 +195,8 @@ const ProductDetailPage = () => {
   };
 
   const handleShare = () => {
+    if (!product) return;
+
     if (navigator.share) {
       navigator
         .share({
@@ -252,7 +207,7 @@ const ProductDetailPage = () => {
         .then(() => {
           toast({
             title: "Shared successfully",
-          variant: "default",
+            variant: "default",
           });
         })
         .catch((error) => {
@@ -271,7 +226,7 @@ const ProductDetailPage = () => {
     }
   };
 
-  const handleSlideChange = (swiper) => {
+  const handleSlideChange = (swiper: any) => {
     setActiveSlideIndex(swiper.realIndex);
   };
 
@@ -300,7 +255,7 @@ const ProductDetailPage = () => {
       </Button>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-        {/* Enhanced Product Image Slider */}
+        {/* Product Image Slider */}
         <div className="w-full h-full max-h-[400px] relative">
           {imageUrls.length > 0 ? (
             <>
@@ -313,7 +268,7 @@ const ProductDetailPage = () => {
                   delay: 3000,
                   disableOnInteraction: false,
                 }}
-                loop={true}
+                loop={imageUrls.length > 1}
                 onSlideChange={handleSlideChange}
               >
                 {imageUrls.map((url, index) => (
@@ -323,18 +278,27 @@ const ProductDetailPage = () => {
                         src={url}
                         alt={`product-image-${index + 1}`}
                         className="w-full h-full object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = `${BASE_URL}/static/default-product-image.png`;
+                        }}
                       />
                     </div>
                   </SwiperSlide>
                 ))}
               </Swiper>
-              <div className="absolute bottom-4 right-4 bg-black bg-opacity-50 text-white px-2 py-1 rounded-md text-sm z-10">
-                {`${activeSlideIndex + 1}/${imageUrls.length}`}
-              </div>
+              {imageUrls.length > 1 && (
+                <div className="absolute bottom-4 right-4 bg-black bg-opacity-50 text-white px-2 py-1 rounded-md text-sm z-10">
+                  {`${activeSlideIndex + 1}/${imageUrls.length}`}
+                </div>
+              )}
             </>
           ) : (
             <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center">
-              <p>No images available</p>
+              <img 
+                src={`${BASE_URL}/static/default-product-image.png`} 
+                alt="Default product" 
+                className="w-full h-full object-contain"
+              />
             </div>
           )}
         </div>
@@ -415,26 +379,38 @@ const ProductDetailPage = () => {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              {/* Always show Buy Now button */}
               <Button
-                className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
-                onClick={handleAddToCart}
+                className="bg-primary hover:bg-primary/90 flex-1"
+                onClick={() => handleAddToCart("sale")}
               >
                 <ShoppingCart className="mr-2 h-4 w-4" />
-                {product.type === "rent" ? "Rent Now" : "Add to Cart"}
+                Buy Now
               </Button>
+
+              {/* Show Rent Now button only for rental products */}
+              {product.type === "rent" && (
+                <Button
+                  className="bg-secondary hover:bg-secondary/90 flex-1"
+                  onClick={() => handleAddToCart("rent")}
+                >
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  Rent Now
+                </Button>
+              )}
+
               <Button
                 variant="outline"
-                className={`w-full sm:w-auto ${isInWishlist(product.id) ? "text-red-500 border-red-500" : ""
-                  }`}
+                className={`flex-1 ${isInWishlist(product.id) ? "text-red-500 border-red-500" : ""}`}
                 onClick={() => toggleWishlist(product)}
               >
                 <Heart
-                  className={`mr-2 h-4 w-4 ${isInWishlist(product.id) ? "fill-red-500" : ""
-                    }`}
+                  className={`mr-2 h-4 w-4 ${isInWishlist(product.id) ? "fill-red-500" : ""}`}
                 />
-                {isInWishlist(product.id) ? "Remove from Wishlist" : "Add to Wishlist"}
+                {isInWishlist(product.id) ? "Remove" : "Wishlist"}
               </Button>
+              
               <Button
                 variant="ghost"
                 size="icon"

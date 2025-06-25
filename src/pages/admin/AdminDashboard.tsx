@@ -46,7 +46,7 @@ const AdminDashboard = ({ children }: AdminDashboardProps) => {
     { name: "Coupon Management", icon: <Percent size={20} />, path: "/admin/coupons" },
     { name: "Sales Transactions", icon: <ShoppingCart size={20} />, path: "/admin/transactions" },
     { name: "Rental Management", icon: <Clock size={20} />, path: "/admin/rentals" },
-
+    { name: "Build PC", icon: <Cpu size={20} />, path: "/admin/buildpc" },
     { name: "Reports", icon: <FileText size={20} />, path: "/admin/reports" },
     // { name: "Analytics", icon: <BarChart2 size={20} />, path: "/admin/analytics" },
     { name: "Profile", icon: <User size={20} />, path: "/admin/profile" },
@@ -101,9 +101,11 @@ const AdminDashboard = ({ children }: AdminDashboardProps) => {
     <div className="flex h-screen bg-gray-100">
       <div className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-white shadow-md transition-all duration-300 h-screen`}>
         <div className="flex items-center justify-between p-4 border-b">
-          <h1 className={`font-bold text-xl text-primary ${!isSidebarOpen && 'hidden'}`}>
-            MumbaipcMart Admin
-          </h1>
+         <Link to="/">
+  <h1 className={`font-bold text-xl text-primary ${!isSidebarOpen && 'hidden'}`}>
+    MumbaipcMart Admin
+  </h1>
+</Link>
           <button onClick={toggleSidebar} className="p-1 rounded-full hover:bg-gray-100">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               {isSidebarOpen ? <path d="M15 18l-6-6 6-6" /> : <path d="M9 18l6-6-6-6" />}
