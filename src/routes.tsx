@@ -1,6 +1,5 @@
 export const BASE_URL = "http://localhost:8001"; // or use import.meta.env.VITE_API_URL if using .env
 
-
 const apiRoutes = {
   auth: {
     login: `${BASE_URL}/auth/login`,
@@ -10,16 +9,27 @@ const apiRoutes = {
   },
   users: {
     getAll: `${BASE_URL}/users`,
-    getById: (id) => `${BASE_URL}/users/${id}`,
-    update: (id) => `${BASE_URL}/users/${id}`,
-    delete: (id) => `${BASE_URL}/users/${id}`,
+    getById: (id: string) => `${BASE_URL}/users/${id}`,
+    update: (id: string) => `${BASE_URL}/users/${id}`,
+    delete: (id: string) => `${BASE_URL}/users/${id}`,
   },
   products: {
     getAll: `${BASE_URL}/products`,
-    getById: (id) => `${BASE_URL}/products/${id}`,
+    getById: (id: string) => `${BASE_URL}/products/${id}`,
     create: `${BASE_URL}/products`,
-    update: (id) => `${BASE_URL}/products/${id}`,
-    delete: (id) => `${BASE_URL}/products/${id}`,
+    update: (id: string) => `${BASE_URL}/products/${id}`,
+    delete: (id: string) => `${BASE_URL}/products/${id}`,
+  },
+  rentals: {
+    getAll: `${BASE_URL}/rentals`,
+    getById: (id: string) => `${BASE_URL}/rentals/${id}`,
+    create: `${BASE_URL}/rentals`,
+    update: (id: string) => `${BASE_URL}/rentals/${id}`,
+    delete: (id: string) => `${BASE_URL}/rentals/${id}`,
+    getByUser: (userId: string) => `${BASE_URL}/rentals/user/${userId}`,
+    updateStatus: (id: string) => `${BASE_URL}/rentals/${id}/status`,
+    getOverdue: `${BASE_URL}/rentals/overdue`,
+    getActive: `${BASE_URL}/rentals/active`,
   },
 };
 

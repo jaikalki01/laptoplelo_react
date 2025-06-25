@@ -109,8 +109,8 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001"; /
   setIsSubmitting(true);
 
   try {
-   const response = await fetch(`${BASE_URL}/user/change-password`, {
-  method: "PUT",
+   const response = await fetch(`${BASE_URL}/users/change-password`, {
+  method: "POST",
   headers: {
     "Content-Type": "application/json",
     Authorization: `Bearer ${localStorage.getItem("token")}`,
