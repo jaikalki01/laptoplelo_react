@@ -124,75 +124,78 @@ const ProductDetailPage = () => {
     }
   }, [id]);
 
-  const handleAddToCart = (productType: "sale" | "rent" = product?.type || "sale") => {
-    if (!product) return;
+const handleAddToCart = (productType: "sale" | "rent" = product?.type || "sale") => {
+  if (!product) return;
 
-    const payload = {
-      product_id: product.id,
-      quantity,
-      rental_duration: productType === "sale" ? 0 : rental_duration,
-      type: productType,
-      user_id: 1
-    };
-
-    const token = localStorage.getItem("token");
-
-    fetch(`${BASE_URL}/cart`, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}` 
-      },
-      body: JSON.stringify(payload),
-    })
-      .then((res) => res.json())
-      .then(() => {
-        addToCart(product);
-        toast({ 
-          title: productType === "rent" ? "Added to cart for rent" : "Added to cart for purchase",
-          variant: "default"
-        });
-        fetchCartCount();
-      })
-      .catch((error) => {
-        toast({
-          title: "Error adding to cart",
-          description: error.message,
-          variant: "destructive",
-        });
-      });
+  const payload = {
+    product_id: product.id,
+    quantity,
+    rental_duration: productType === "sale" ? 0 : rental_duration,
+    type: productType
   };
 
-  const handleRemoveFromCart = () => {
-    if (!product) return;
+  const token = localStorage.getItem("token");
 
-    const token = localStorage.getItem("token");
-
-    fetch(`${BASE_URL}/cart/cart/remove`, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        product_id: product.id,
-        user_id: 1,
-        type: product.type,
-      }),
-    })
-      .then((res) => res.json())
-      .then(() => {
-        toast({ title: "Removed from cart" });
-        fetchCartCount();
-      })
-      .catch((error) => {
-        toast({
-          title: "Error removing from cart",
-          description: error.message,
-          variant: "destructive",
-        });
+  fetch(`${BASE_URL}/cart`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(payload)
+  })
+    .then((res) => res.json())
+    .then(() => {
+      addToCart(product); // local update
+      toast({
+        title: productType === "rent" ? "Added to cart for rent" : "Added to cart for purchase"
       });
-  };
+      fetchCartCount();
+    })
+    .catch((error) => {
+      toast({
+        title: "Error adding to cart",
+        description: error.message,
+        variant: "destructive"
+      });
+    });
+};
+
+
+const handleRemoveFromCart = () => {
+  if (!product) return;
+
+  const token = localStorage.getItem("token");
+
+  fetch(`${BASE_URL}/cart/remove`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      product_id: product.id, // ✅ no hardcoded user_id
+      type: product.type,
+    }),
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.detail || "Failed to remove from cart");
+      }
+
+      toast({ title: "Removed from cart" });
+      fetchCartCount();
+    })
+    .catch((error) => {
+      toast({
+        title: "Error removing from cart",
+        description: error.message,
+        variant: "destructive",
+      });
+    });
+};
+
 
   const handleShare = () => {
     if (!product) return;

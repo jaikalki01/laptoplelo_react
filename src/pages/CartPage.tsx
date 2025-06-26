@@ -138,20 +138,26 @@ const CartPage = () => {
 
   const updateCartQuantity = async (productId: number, quantity: number) => {
     try {
+      const token = localStorage.getItem("token");
+
+      // Remove item if quantity goes to 0
+      if (quantity <= 0) {
+        await removeFromCart(productId);
+        return;
+      }
+
       const payload = {
         product_id: productId,
         quantity,
-        rental_duration: 1, // adjust this as needed
-        type: "sale",       // or "rental"        // dynamically get current user id
+        rental_duration: 1,
+        type: "sale",
       };
 
-      const token = localStorage.getItem("token"); // or wherever you store the JWT
-
-      const response = await fetch(`${BASE_URL}1/cart/`, {
+      const response = await fetch(`${BASE_URL}/cart/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-           Authorization: `Bearer ${token}`,  // send token in header
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -159,44 +165,44 @@ const CartPage = () => {
       if (!response.ok) {
         throw new Error("Failed to update cart");
       }
+
       fetchCartAndProducts();
       fetchCartCount();
-
-      // optionally refresh cart state here
     } catch (error) {
       console.error("Update cart error:", error);
     }
   };
 
-  const removeFromCart = async (productId: number) => {
-    try {
-      const payload = {
-        product_id: productId,
-        type: "sale", // or "rental"
-      };
-      
-      const token = localStorage.getItem("token"); // get token from storage
 
-      const response = await fetch(`${BASE_URL}/cart/cart/remove`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-           Authorization: `Bearer ${token}`,  // send token in header
-        },
-        body: JSON.stringify(payload),
-      });
+const removeFromCart = async (productId: number, type: "sale" | "rent") => {
+  try {
+    const token = localStorage.getItem("token");
 
-      if (!response.ok) {
-        throw new Error("Failed to remove item");
-      }
+    const payload = {
+      product_id: productId,
+      type: type, // ⬅️ use actual type now
+    };
 
-      // ✅ Refresh the page after successful removal
-      fetchCartAndProducts();
-      fetchCartCount();
-    } catch (error) {
-      console.error("Remove cart error:", error);
+    const response = await fetch(`${BASE_URL}/cart/cart/remove`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to remove item");
     }
-  };
+
+    fetchCartAndProducts();
+    fetchCartCount();
+  } catch (error) {
+    console.error("Remove cart error:", error);
+  }
+};
+
 
 
   const handleCheckout = () => {
@@ -260,18 +266,15 @@ const CartPage = () => {
                 <div className="flex flex-col sm:flex-row">
                   <div className="w-full sm:w-32 h-32 bg-gray-100">
                     <img
-                      src={`${BASE_URL}/static/uploaded_images/product_image_1_${item.product.id}.jpg`}
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.onerror = () => {
-                          target.onerror = null;
-                          target.src = `${BASE_URL}/uploaded_images/product_image_${item.product.id}.jpeg`;
-                        };
-                        target.src = `${BASE_URL}/static/uploaded_images/product_image_${item.product.id}.png`;
-                      }}
-                      alt={item.product.name}
-                      className="w-full h-full object-cover"
-                    />
+              src={`${BASE_URL}/static/uploaded_images/${item.product.image}`}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.onerror = null;
+                target.src = "/default-product-image.png";
+              }}
+              alt={item.product.name}
+              className="w-full h-full object-cover"
+            />
                   </div>
                   <div className="flex-1 p-4">
                     <div className="flex flex-col sm:flex-row sm:justify-between">
@@ -281,30 +284,36 @@ const CartPage = () => {
                             {item.product.name}
                           </h3>
                         </Link>
-                        <p className="text-sm text-gray-500 mb-2">
-                          {item.product.brand}
-                        </p>
+                        <p className="text-sm text-gray-500 mb-2">{item.product.brand}</p>
                         <p className="font-medium">
                           {item.product.type === "rent"
                             ? `₹${item.product.rental_price?.toLocaleString()}/mo`
                             : `₹${item.product.price.toLocaleString()}`}
                         </p>
                       </div>
+
                       <div className="mt-4 sm:mt-0">
                         <div className="flex items-center space-x-3">
-                          {item.product.type !== "rent" ? (
+                          {item.product.type === "rent" ? (
+                            // 🟡 RENT ITEM
                             <div className="flex items-center gap-2">
+                              <span className="px-3 py-1 rounded border text-sm font-medium text-muted-foreground bg-muted">
+                                {item.quantity} item For Rent
+                              </span>
+                            </div>
+                          ) : (
+                            // 🟢 SALE ITEM
+                            <div className="flex items-center gap-2">
+                              <span className="px-3 py-1 rounded border text-sm font-medium text-muted-foreground bg-muted">
+                                {item.quantity} item For Sale
+                              </span>
                               <Button
                                 variant="outline"
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() =>
-                                  updateCartQuantity(
-                                    item.product.id,
-                                    Math.max(1, item.quantity - 1)
-                                  )
+                                  updateCartQuantity(item.product.id, item.quantity - 1)
                                 }
-                                disabled={item.quantity <= 1}
                               >
                                 –
                               </Button>
@@ -314,33 +323,29 @@ const CartPage = () => {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() =>
-                                  updateCartQuantity(
-                                    item.product.id,
-                                    item.quantity + 1
-                                  )
+                                  updateCartQuantity(item.product.id, item.quantity + 1)
                                 }
                               >
                                 +
                               </Button>
                             </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="px-3 py-1 rounded border text-sm font-medium text-muted-foreground bg-muted">
-                                {item.quantity} item For Rent
-                              </span>
-                            </div>
                           )}
+
+                          {/* ✅ DELETE button — always visible */}
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-red-500 hover:text-red-700"
-                            onClick={() => removeFromCart(item.product.id)}
+                            onClick={() =>
+                              removeFromCart(item.product.id, item.product.type) // 👈 Pass type!
+                            }
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
                     </div>
+
                   </div>
                 </div>
               </Card>
