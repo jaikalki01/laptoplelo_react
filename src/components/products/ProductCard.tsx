@@ -10,6 +10,7 @@ import axios from "axios";
 import { useWishlist } from "../layout/wishlistprovider";
 import { BASE_URL } from "@/routes";
 import { useToast } from "@/components/ui/use-toast";
+import { useCart } from "../layout/cartprovider";
 
 interface ProductCardProps {
   product: Product;
@@ -17,6 +18,7 @@ interface ProductCardProps {
 
 const ProductCard = ({ product }: ProductCardProps) => {
   const { fetchWishlistCount } = useWishlist();
+  const { fetchCartCount } = useCart();
   const { addToCart } = useApp();
   const { toast } = useToast();
   const [imageUrl, setImageUrl] = useState<string>("");
@@ -101,24 +103,57 @@ const ProductCard = ({ product }: ProductCardProps) => {
     }
   };
 
-  const handleAddToCart = () => {
-    const cartItem = {
-      ...product,
-      type: product.type === "both" ? (showRentPrice ? "rent" : "sale") : product.type,
-      rental_duration: product.type === "rent" || (product.type === "both" && showRentPrice) ? 30 : 0
-    };
-    
-    addToCart(cartItem);
-    toast({
-      title: "Added to cart",
-      description: `${product.name} has been added to your cart`,
-      variant: "default",
-    });
+  const handleAddToCart = async () => {
+    try {
+      const type = product.type === "both" ? (showRentPrice ? "rent" : "sale") : product.type;
+      const rental_duration = type === "rent" ? 30 : 0;
+      const price = type === "rent" ? product.rental_price : product.price;
+
+      const payload = {
+        product_id: product.id,
+        quantity: 1,
+        rental_duration,
+        type,
+        price
+      };
+
+      const token = localStorage.getItem("token");
+      const response = await axios.post(`${BASE_URL}/cart`, payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.status === 200) {
+        addToCart({
+          ...product,
+          type,
+          rental_duration,
+          price
+        });
+        
+        fetchCartCount();
+        
+        toast({
+          title: "Added to cart",
+          description: `${product.name} has been added to your cart`,
+          variant: "default",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add item to cart",
+        variant: "destructive",
+      });
+      console.error("Error adding to cart:", error);
+    }
   };
 
   const getButtonText = () => {
     if (product.type === "rent") return "Rent Now";
-    if (product.type === "sale") return "Buy Now";
+    if (product.type === "sale") return "Add to Cart";
     return showRentPrice ? "Rent Now" : "Add to Cart";
   };
 

@@ -48,11 +48,12 @@ const ProductsPage = () => {
         setProductList(fetchedProducts);
 
         let filtered = fetchedProducts;
-        if (type === 'sale' || type === 'rent') {
-          filtered = fetchedProducts.filter(product => product.type === type);
-        } else if (type === 'both') {
-          filtered = fetchedProducts.filter(product => ['sale', 'rent'].includes(product.type));
-        }
+       if (type === 'sale' || type === 'rent' || type === 'both') {
+  filtered = fetchedProducts.filter(product => 
+    product.type === type || product.type === 'both'
+  );
+}
+
         setFilteredProducts(filtered);
       } catch (error) {
         // Handle error

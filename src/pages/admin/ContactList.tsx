@@ -27,7 +27,7 @@ const ContactList: React.FC = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-      setContacts(res.data);
+      setContacts(res.data as Contact[]);
     } catch (error) {
       console.error("Failed to fetch contact messages:", error);
     } finally {

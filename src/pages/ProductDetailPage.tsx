@@ -162,40 +162,40 @@ const handleAddToCart = (productType: "sale" | "rent" = product?.type || "sale")
 };
 
 
-const handleRemoveFromCart = () => {
+const handleRemoveFromCart = async () => {
   if (!product) return;
 
   const token = localStorage.getItem("token");
 
-  fetch(`${BASE_URL}/cart/remove`, {
-    method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      product_id: product.id, // ✅ no hardcoded user_id
-      type: product.type,
-    }),
-  })
-    .then(async (res) => {
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.detail || "Failed to remove from cart");
-      }
-
-      toast({ title: "Removed from cart" });
-      fetchCartCount();
-    })
-    .catch((error) => {
-      toast({
-        title: "Error removing from cart",
-        description: error.message,
-        variant: "destructive",
-      });
+  try {
+    const response = await fetch(`${BASE_URL}/cart/clear`, {
+      method: "DELETE", // Changed to DELETE
+      headers: { 
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        product_id: product.id,
+        type: product.type,
+      }),
     });
-};
 
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to remove from cart");
+    }
+
+    toast({ title: "Removed from cart successfully" });
+    fetchCartCount(); // Refresh cart count
+  } catch (error) {
+    toast({
+      title: "Error removing from cart",
+      description: error instanceof Error ? error.message : "Unknown error",
+      variant: "destructive",
+    });
+    console.error("Remove from cart error:", error);
+  }
+};
 
   const handleShare = () => {
     if (!product) return;
