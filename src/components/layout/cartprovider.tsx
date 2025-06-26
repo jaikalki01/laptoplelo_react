@@ -1,29 +1,28 @@
-// WishlistContext.tsx
-import React, { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
+import { BASE_URL } from "@/routes";
 
-const CartContext = createContext(null);
-import {BASE_URL} from "../../routes"
+const CartContext = createContext<any>(null);
 
-export const CartProvider = ({ children }) => {
+export const CartProvider = ({ children }: any) => {
   const [cartCount, setCartCount] = useState(0);
 
   const fetchCartCount = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/cart/cart/count`, {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${BASE_URL}/cart`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
         },
       });
       const data = await res.json();
-      setCartCount(data.total_cart_items);
-    } catch (err) {
-      console.error("Failed to fetch cart count", err);
+      setCartCount(data.length); // Set count based on items
+    } catch (error) {
+      console.error("Failed to fetch cart count", error);
     }
   };
 
   useEffect(() => {
     fetchCartCount();
-    console.log(cartCount+"hello")
   }, []);
 
   return (
