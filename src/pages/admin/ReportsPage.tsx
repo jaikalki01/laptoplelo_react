@@ -1,90 +1,29 @@
-
-import { useState } from "react";
+// Updated to use real data from API for ReportsPage
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
-import { 
-  FileText, 
-  Calendar, 
-  Download, 
-  BarChart, 
-  PieChart,
-  TrendingUp
+import {
+  FileText,
+  Calendar,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import AdminDashboard from "./AdminDashboard";
-import { transactions } from "@/data/transactions";
-import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
-
-// Helper function to calculate total sales
-const calculateTotalSales = () => {
-  return transactions.reduce((total, tx) => {
-    if (tx.type === 'sale' && tx.status === 'completed') {
-      return total + tx.total;
-    }
-    return total;
-  }, 0);
-};
-
-// Helper function to calculate total rentals
-const calculateTotalRentals = () => {
-  return transactions.reduce((total, tx) => {
-    if (tx.type === 'rent' && tx.status === 'completed') {
-      return total + tx.total;
-    }
-    return total;
-  }, 0);
-};
-
-// Helper function to group transactions by month
-const getMonthlyData = () => {
-  const monthlyData: { [key: string]: { sales: number, rentals: number, month: string } } = {};
-  
-  transactions.forEach(tx => {
-    if (tx.status !== 'completed') return;
-    
-    const date = new Date(tx.date);
-    const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
-    const monthName = date.toLocaleString('en-US', { month: 'short' });
-    
-    if (!monthlyData[monthYear]) {
-      monthlyData[monthYear] = { sales: 0, rentals: 0, month: monthName };
-    }
-    
-    if (tx.type === 'sale') {
-      monthlyData[monthYear].sales += tx.total;
-    } else {
-      monthlyData[monthYear].rentals += tx.total;
-    }
-  });
-  
-  // Convert to array and sort by date
-  return Object.entries(monthlyData)
-    .map(([key, value]) => ({
-      ...value,
-      key
-    }))
-    .sort((a, b) => {
-      const [aMonth, aYear] = a.key.split('/').map(Number);
-      const [bMonth, bYear] = b.key.split('/').map(Number);
-      
-      if (aYear !== bYear) return aYear - bYear;
-      return aMonth - bMonth;
-    })
-    .slice(-6); // Get last 6 months
-};
-
-// Helper function to get transaction type breakdown
-const getTransactionTypeData = () => {
-  const saleCount = transactions.filter(tx => tx.type === 'sale' && tx.status === 'completed').length;
-  const rentCount = transactions.filter(tx => tx.type === 'rent' && tx.status === 'completed').length;
-  
-  return [
-    { name: 'Sales', value: saleCount },
-    { name: 'Rentals', value: rentCount }
-  ];
-};
+import {
+  BarChart as RechartsBarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell
+} from 'recharts';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
@@ -93,30 +32,38 @@ const ReportsPage = () => {
   const navigate = useNavigate();
   const [reportPeriod, setReportPeriod] = useState("last6months");
 
-  // If user is not admin, redirect to login
-  if (!user || user.role !== 'admin') {
-    navigate('/login');
-    return null;
-  }
-  
-  const totalSales = calculateTotalSales();
-  const totalRentals = calculateTotalRentals();
-  const totalRevenue = totalSales + totalRentals;
-  const monthlyData = getMonthlyData();
-  const transactionTypeData = getTransactionTypeData();
+  const [report, setReport] = useState<any>(null);
+  const [monthlyData, setMonthlyData] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user || user.role !== 'admin') {
+      navigate('/login');
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetch("http://localhost:8001/api/v1/analytics/reports")
+      .then(res => res.json())
+      .then(data => setReport(data));
+
+    fetch("http://localhost:8001/api/v1/analytics/monthly-revenue")
+      .then(res => res.json())
+      .then(data => setMonthlyData(data));
+  }, []);
 
   const handleExportReport = () => {
-    // In a real app, this would generate a report
     alert("Report exported (simulation)");
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', { 
-      style: 'currency', 
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
       currency: 'INR',
       maximumFractionDigits: 0
     }).format(amount);
   };
+
+  if (!report) return null;
 
   return (
     <AdminDashboard>
@@ -136,7 +83,7 @@ const ReportsPage = () => {
               <CardTitle className="text-sm font-medium text-gray-500">Total Revenue</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(Number(report.total_revenue) || 0)}</div>
               <div className="text-xs text-gray-500 mt-1">From all transactions</div>
             </CardContent>
           </Card>
@@ -145,7 +92,7 @@ const ReportsPage = () => {
               <CardTitle className="text-sm font-medium text-gray-500">Sales Revenue</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalSales)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(Number(report.sales_revenue) || 0)}</div>
               <div className="text-xs text-gray-500 mt-1">From product sales</div>
             </CardContent>
           </Card>
@@ -154,7 +101,8 @@ const ReportsPage = () => {
               <CardTitle className="text-sm font-medium text-gray-500">Rental Revenue</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalRentals)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(Number(report.total_revenue) || 0)}
+</div>
               <div className="text-xs text-gray-500 mt-1">From product rentals</div>
             </CardContent>
           </Card>
@@ -165,7 +113,7 @@ const ReportsPage = () => {
             <TabsTrigger value="revenue">Revenue</TabsTrigger>
             <TabsTrigger value="transactions">Transactions</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="revenue">
             <Card>
               <CardHeader>
@@ -186,19 +134,11 @@ const ReportsPage = () => {
               <CardContent>
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
-                    <RechartsBarChart
-                      data={monthlyData}
-                      margin={{
-                        top: 20,
-                        right: 30,
-                        left: 20,
-                        bottom: 5,
-                      }}
-                    >
+                    <RechartsBarChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="month" />
                       <YAxis />
-                      <Tooltip formatter={(value) => formatCurrency(value as number)} />
+<Tooltip formatter={(value) => formatCurrency(typeof value === 'number' ? value : 0)} />
                       <Legend />
                       <Bar dataKey="sales" name="Sales" fill="#8884d8" />
                       <Bar dataKey="rentals" name="Rentals" fill="#82ca9d" />
@@ -208,7 +148,7 @@ const ReportsPage = () => {
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="transactions">
             <Card>
               <CardHeader>
@@ -220,18 +160,21 @@ const ReportsPage = () => {
                   <ResponsiveContainer width="100%" height="100%">
                     <RechartsPieChart>
                       <Pie
-                        data={transactionTypeData}
+                       data={report.transaction_type_distribution || []}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) => `${name}: ${isNaN(percent) ? '0' : (percent * 100).toFixed(0)}%`}
+
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {transactionTypeData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
+                      {Array.isArray(report.transaction_type_distribution) &&
+  report.transaction_type_distribution.map((entry: any, index: number) => (
+    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+))}
+
                       </Pie>
                       <Tooltip />
                     </RechartsPieChart>
