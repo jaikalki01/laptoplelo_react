@@ -1,94 +1,48 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
-import { 
-  ShoppingCart, 
-  Search, 
-  Filter, 
+import {
+  ShoppingCart,
+  Search,
   Eye,
   Download,
-  Calendar
+  Calendar,
+  X
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import AdminDashboard from "./AdminDashboard";
-import { transactions } from "@/data/transactions";
+import { Dialog } from "@/components/ui/dialog";
 
 const TransactionManagement = () => {
   const { user } = useApp();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const [transactions, setTransactions] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterType, setFilterType] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [page, setPage] = useState(1);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const limit = 10;
 
-  // If user is not admin, redirect to login
-  if (!user || user.role !== 'admin') {
-    navigate('/login');
-    return null;
-  }
+  useEffect(() => {
+    fetch(`http://127.0.0.1:8001/api/v1/transaction/list?skip=${(page - 1) * limit}&limit=${limit}`)
+      .then((res) => res.json())
+      .then((data) => setTransactions(data))
+      .catch((err) => {
+        console.error("Failed to fetch transactions:", err);
+        toast({ title: "Error", description: "Could not load transactions" });
+      });
+  }, [page]);
 
-  // Filter transactions based on search term and filters
-  const filteredTransactions = transactions.filter(t => {
-    const matchesSearch = 
-      t.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.userId.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = filterStatus === "all" || t.status === filterStatus;
-    
-    const matchesType = filterType === "all" || t.type === filterType;
-    
-    let matchesDate = true;
-    const txDate = new Date(t.date);
-    
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999); // Include the full end date
-      matchesDate = txDate >= start && txDate <= end;
-    } else if (startDate) {
-      const start = new Date(startDate);
-      matchesDate = txDate >= start;
-    } else if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      matchesDate = txDate <= end;
-    }
-    
-    return matchesSearch && matchesStatus && matchesType && matchesDate;
-  });
+  const filtered = transactions.filter((t) =>
+    t.transaction_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t.user_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const handleViewDetails = (transactionId: string) => {
-    // In a real app, this would navigate to a details page
-    toast({
-      title: "View transaction",
-      description: "Redirecting to transaction details page",
-    });
-  };
-
-  const handleExport = () => {
-    toast({
-      title: "Export transactions",
-      description: "Transactions have been exported successfully",
-    });
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(price);
-  };
-
-  const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('en-IN', options);
-  };
+  const formatDate = (d) => new Date(d).toLocaleDateString("en-IN");
+  const formatPrice = (p) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(p);
 
   return (
     <AdminDashboard>
@@ -97,148 +51,90 @@ const TransactionManagement = () => {
           <h1 className="text-2xl font-semibold flex items-center">
             <ShoppingCart className="mr-2" /> Transaction Management
           </h1>
-          <Button onClick={handleExport}>
+          <Button onClick={() => toast({ title: "Export", description: "Exported" })}>
             <Download size={18} className="mr-2" /> Export
           </Button>
         </div>
 
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-4 border-b">
-            <h2 className="font-medium">Filters</h2>
-          </div>
-          <div className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                  <Input
-                    placeholder="Search by ID or user..."
-                    className="pl-10"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Transaction Type</label>
-                <select
-                  className="w-full p-2 border rounded-md"
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-                >
-                  <option value="all">All Types</option>
-                  <option value="sale">Sale</option>
-                  <option value="rent">Rent</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  className="w-full p-2 border rounded-md"
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                >
-                  <option value="all">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                  <Input
-                    type="date"
-                    className="pl-10"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                  <Input
-                    type="date"
-                    className="pl-10"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
+        <div className="bg-white rounded-lg shadow mb-6 p-4">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Input
+              placeholder="Search by transaction ID or user"
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-gray-500 border-b">
-                  <th className="px-6 py-3">Transaction ID</th>
-                  <th className="px-6 py-3">User ID</th>
-                  <th className="px-6 py-3">Date</th>
-                  <th className="px-6 py-3">Type</th>
-                  <th className="px-6 py-3">Amount</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3">Actions</th>
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="text-left text-gray-500 border-b">
+                <th className="px-6 py-3">Transaction ID</th>
+                <th className="px-6 py-3">User Info</th>
+                <th className="px-6 py-3">Date</th>
+                <th className="px-6 py-3">Type</th>
+                <th className="px-6 py-3">Amount</th>
+                <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((t) => (
+                <tr key={t.id} className="border-b hover:bg-gray-50">
+                  <td className="px-6 py-4">{t.transaction_id}</td>
+                  <td className="px-6 py-4">
+                    <div>{t.user_name}</div>
+                    <div className="text-xs text-gray-500">{t.user_email}</div>
+                    <div className="text-xs text-gray-400">{t.user_phone}</div>
+                  </td>
+                  <td className="px-6 py-4">{formatDate(t.created_at)}</td>
+                  <td className="px-6 py-4 capitalize">{t.type}</td>
+                  <td className="px-6 py-4 font-medium">{formatPrice(t.amount)}</td>
+                  <td className="px-6 py-4 capitalize">{t.status}</td>
+                  <td className="px-6 py-4">
+                    <Button variant="outline" size="sm" onClick={() => setSelectedTransaction(t)}>
+                      <Eye size={16} className="mr-1" /> View
+                    </Button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="border-b hover:bg-gray-50">
-                    <td className="px-6 py-4">{transaction.id}</td>
-                    <td className="px-6 py-4">{transaction.userId}</td>
-                    <td className="px-6 py-4">{formatDate(transaction.date)}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        transaction.type === 'sale' 
-                          ? 'bg-blue-100 text-blue-700' 
-                          : 'bg-green-100 text-green-700'
-                      }`}>
-                        {transaction.type === 'sale' ? 'Sale' : 'Rent'}
-                        {transaction.rentDuration && ` (${transaction.rentDuration} days)`}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-medium">
-                      {formatPrice(transaction.total)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        transaction.status === 'completed' 
-                          ? 'bg-green-100 text-green-700' 
-                          : transaction.status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : 'bg-red-100 text-red-700'
-                      }`}>
-                        {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleViewDetails(transaction.id)}
-                      >
-                        <Eye size={16} className="mr-1" /> View
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {filteredTransactions.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              No transactions found matching your search criteria.
-            </div>
-          )}
+              ))}
+            </tbody>
+          </table>
         </div>
+
+        {/* Pagination */}
+        <div className="flex justify-center gap-2 mt-4">
+          <Button disabled={page === 1} onClick={() => setPage(page - 1)}>Prev</Button>
+          <span className="self-center">Page {page}</span>
+          <Button onClick={() => setPage(page + 1)}>Next</Button>
+        </div>
+
+        {/* View Transaction Modal */}
+        {selectedTransaction && (
+          <Dialog open={true} onOpenChange={() => setSelectedTransaction(null)}>
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-lg shadow-lg w-[90%] max-w-md relative">
+                <button className="absolute top-2 right-2" onClick={() => setSelectedTransaction(null)}>
+                  <X />
+                </button>
+                <h2 className="text-xl font-semibold mb-4">Transaction Details</h2>
+                <div className="text-sm space-y-2">
+                  <p><strong>ID:</strong> {selectedTransaction.transaction_id}</p>
+                  <p><strong>User:</strong> {selectedTransaction.user_name} ({selectedTransaction.user_email})</p>
+                  <p><strong>Phone:</strong> {selectedTransaction.user_phone}</p>
+                  <p><strong>Type:</strong> {selectedTransaction.type}</p>
+                  <p><strong>Method:</strong> {selectedTransaction.method}</p>
+                  <p><strong>Amount:</strong> {formatPrice(selectedTransaction.amount)}</p>
+                  <p><strong>Status:</strong> {selectedTransaction.status}</p>
+                  <p><strong>Date:</strong> {formatDate(selectedTransaction.created_at)}</p>
+                </div>
+              </div>
+            </div>
+          </Dialog>
+        )}
       </div>
     </AdminDashboard>
   );
