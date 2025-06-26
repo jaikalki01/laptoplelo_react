@@ -1,17 +1,12 @@
-
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ShoppingCart, Trash2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, ShoppingCart, Trash2, ShoppingBag, Image as ImageIcon } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useWishlist } from "@/components/layout/wishlistprovider";
-
+import { BASE_URL } from "@/routes";
 
 const WishlistPage = () => {
   const { fetchWishlistCount } = useWishlist();
@@ -21,9 +16,9 @@ const WishlistPage = () => {
 
   const fetchWishlist = async () => {
     try {
-      const res = await axios.get("http://127.0.0.1:8001/wishlist/wishlist", {
+      const res = await axios.get(`${BASE_URL}/wishlist/wishlist`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`, // Adjust if you're using a different auth method
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
       setWishlist(res.data.wishlist);
@@ -34,16 +29,42 @@ const WishlistPage = () => {
 
   const removeFromWishlist = async (productId: number) => {
     try {
-      await axios.delete(`http://127.0.0.1:8001/wishlist/wishlist/${productId}`, {
+      await axios.delete(`${BASE_URL}/wishlist/wishlist/${productId}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
       setWishlist((prev) => prev.filter((item) => item.id !== productId));
-      fetchWishlistCount()
+      fetchWishlistCount();
     } catch (err) {
       console.error("Failed to remove from wishlist:", err);
     }
+  };
+
+  const getProductImage = (product) => {
+    // First try the product's image property if it exists
+    if (product.image) {
+      return `${BASE_URL}/static/uploaded_images/${product.image}`;
+    }
+    
+    // Then try common image patterns
+    const extensions = ['.jpg', '.jpeg', '.png', '.webp'];
+    const patterns = [
+      `product_${product.id}`,
+      `product_image_${product.id}`,
+      `product_image_1_${product.id}`
+    ];
+    
+    // This is just for the fallback - the actual image should come from product.image
+    return `${BASE_URL}/static/uploaded_images/${patterns[0]}${extensions[0]}`;
+  };
+
+  const handleImageError = (e) => {
+    const target = e.target as HTMLImageElement;
+    target.onerror = null;
+    target.src = `${BASE_URL}/static/default-product-image.png`;
+    target.classList.add('opacity-50');
+    target.parentElement?.classList.add('bg-gray-100');
   };
 
   useEffect(() => {
@@ -68,11 +89,7 @@ const WishlistPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Button
-        variant="ghost"
-        className="mb-6"
-        onClick={() => navigate(-1)}
-      >
+      <Button variant="ghost" className="mb-6" onClick={() => navigate(-1)}>
         <ArrowLeft className="mr-2 h-4 w-4" /> Back
       </Button>
 
@@ -83,20 +100,20 @@ const WishlistPage = () => {
           <Card key={item.id} className="overflow-hidden flex flex-col h-full">
             <div className="relative">
               <Link to={`/product/${item.id}`}>
-                <div className="h-48 overflow-hidden">
-                  <img
-                    src={`http://127.0.0.1:8001/static/uploaded_images/product_image_1_${item.id}.jpg`}
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.onerror = () => {
-                        target.onerror = null;
-                        target.src = `http://127.0.0.1:8001/static/uploaded_images/product_image_${item.id}.jpeg`;
-                      };
-                      target.src = `http://127.0.0.1:8001/static/uploaded_images/product_image_${item.id}.png`;
-                    }}
-                    alt={item.name}
-                    className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
-                  />
+                <div className="h-48 overflow-hidden bg-gray-100 flex items-center justify-center">
+                  {item.image ? (
+                    <img
+                      src={`${BASE_URL}/static/uploaded_images/${item.image}`}
+                      onError={handleImageError}
+                      alt={item.name}
+                      className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
+                    />
+                  ) : (
+                    <div className="text-gray-400 flex flex-col items-center">
+                      <ImageIcon className="h-12 w-12 mb-2" />
+                      <span>No Image</span>
+                    </div>
+                  )}
                 </div>
               </Link>
               <Button
@@ -130,15 +147,13 @@ const WishlistPage = () => {
             </CardContent>
 
             <CardFooter className="p-4 pt-0">
-              <Link to={`/product/${item.id}`}>
-                <Button
-                  onClick={() => addToCart(item)} // Assuming you have `addToCart` in context or props
-                  className="w-full bg-primary hover:bg-primary/90"
-                >
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  {item.type === "rent" ? "Rent Now" : "Add to Cart"}
-                </Button>
-              </Link>
+              <Button
+                onClick={() => addToCart(item)}
+                className="w-full bg-primary hover:bg-primary/90"
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                {item.type === "rent" ? "Rent Now" : "Add to Cart"}
+              </Button>
             </CardFooter>
           </Card>
         ))}
