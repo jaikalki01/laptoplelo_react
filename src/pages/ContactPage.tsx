@@ -34,16 +34,14 @@ const ContactPage = () => {
     };
   
     try {
-      const res = await fetch(`${BASE_URL}/contact`, {
+         const res = await fetch(`${BASE_URL}/contact`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, phone, message, formData }),
       });
   
       if (res.ok) {
-        alert("Message sent successfully!");
+        alert("Message sent successfully!"); 
         setName("");
         setEmail("");
         setPhone("");
