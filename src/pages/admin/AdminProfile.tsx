@@ -249,6 +249,7 @@ const AdminProfile = () => {
           </Card>
 
           {/* Recent Activity */}
+
           <Card className="md:col-span-3">
             <CardHeader>
               <CardTitle>Recent Activity</CardTitle>
@@ -284,6 +285,7 @@ const AdminProfile = () => {
               </div>
             </CardContent>
           </Card>
+
         </div>
       </div>
     </AdminDashboard>

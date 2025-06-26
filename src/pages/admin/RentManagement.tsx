@@ -1,3 +1,4 @@
+// src/pages/admin/RentManagement.tsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
@@ -16,25 +17,32 @@ import { useToast } from "@/components/ui/use-toast";
 import AdminDashboard from "./AdminDashboard";
 import axios from "axios";
 
+// Rental Interface
 interface Rental {
   id: string;
-  userId: string;
+  user_id: string;
+  product_id?: string;
   date: string;
-  rentDuration?: number;
+  rent_duration?: number;
   total: number;
   status: "pending" | "completed" | "cancelled";
-  type: string;
+  type?: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+  };
+  product: {
+    id: string;
+    name: string;
+    price: number;
+  };
 }
 
-// API configuration
-const API_BASE_URL = "http://localhost:8001"; // Replace with your actual API base URL
-const apiRoutes = {
-  rentals: {
-    getAll: `${API_BASE_URL}/rentals`,
-    updateStatus: (id: string) => `${API_BASE_URL}/rentals/${id}/status`,
-    delete: (id: string) => `${API_BASE_URL}/rentals/${id}`,
-  },
-};
+
+// API base URL
+const API_BASE_URL = "http://localhost:8001";
 
 const RentManagement = () => {
   const { user } = useApp();
@@ -55,178 +63,94 @@ const RentManagement = () => {
   const [showModal, setShowModal] = useState(false);
   const [editStatus, setEditStatus] = useState("");
 
-  // Helper functions
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(price);
-
-  const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    };
-    return new Date(dateString).toLocaleDateString("en-IN", options);
-  };
-
-  const calculateDueDate = (startDate: string, duration: number = 30) => {
-    const date = new Date(startDate);
-    date.setDate(date.getDate() + duration);
-    return formatDate(date.toISOString());
-  };
-
-  const isOverdue = (startDate: string, duration: number = 30) => {
-    const dueDate = new Date(startDate);
-    dueDate.setDate(dueDate.getDate() + duration);
-    return new Date() > dueDate;
-  };
-
-  // Data fetching
-  useEffect(() => {
-    const fetchRentals = async () => {
-      try {
-        const response = await axios.get(apiRoutes.rentals.getAll);
-        setRentals(response.data);
-        setLoading(false);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch rentals");
-        setLoading(false);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to fetch rentals",
-        });
-      }
-    };
-
-    if (user && user.role === "admin") {
-      fetchRentals();
-    }
-  }, [user, toast]);
-
-  // Handlers
-  const handleDeleteRental = async (id: string) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this rental?");
-    if (confirmDelete) {
-      try {
-        await axios.delete(apiRoutes.rentals.delete(id));
-        setRentals((prev) => prev.filter((r) => r.id !== id));
-        toast({ title: "Deleted", description: `Rental ${id} has been deleted.` });
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to delete rental",
-        });
-      }
-    }
-  };
-
-  const handleViewDetails = (rental: Rental) => {
-    setSelectedRental(rental);
-    setEditStatus(rental.status);
-    setShowModal(true);
-  };
-
-  const handleSaveStatus = async () => {
-    if (!selectedRental) return;
-
+  const fetchRentals = async () => {
     try {
-      await axios.patch(apiRoutes.rentals.updateStatus(selectedRental.id), {
-        status: editStatus,
-      });
-      setRentals(prev =>
-        prev.map(r =>
-          r.id === selectedRental.id ? { ...r, status: editStatus as Rental['status'] } : r
-        )
-      );
-      toast({ title: "Updated", description: `Status updated to "${editStatus}"` });
-      setShowModal(false);
-    } catch (error) {
+      setLoading(true);
+const response = await axios.get("http://localhost:8001/rentals/rentals");
+      setRentals(response.data);
+    } catch (err) {
+      setError("Failed to load rentals");
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to update rental status",
+        description: "Failed to fetch rental data",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const toggleSort = (field: string) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
-      setSortBy(field);
-      setSortOrder("desc");
+  const updateRentalStatus = async () => {
+    if (!selectedRental) return;
+    try {
+      await axios.patch(`${API_BASE_URL}/rentals/${selectedRental.id}/status`, {
+        status: editStatus,
+      });
+      setRentals((prev) =>
+        prev.map((r) =>
+          r.id === selectedRental.id ? { ...r, status: editStatus as Rental["status"] } : r
+        )
+      );
+      toast({ title: "Updated", description: "Rental status updated successfully." });
+      setShowModal(false);
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "Failed to update status." });
     }
   };
 
-  // Filtering and sorting
-  let filteredRentals = rentals.filter((t) => {
-   const matchesSearch =
-  String(t.id).toLowerCase().includes(searchTerm.toLowerCase()) ||
-  String(t.userId).toLowerCase().includes(searchTerm.toLowerCase());
+  const deleteRental = async (id: string) => {
+    const confirm = window.confirm("Are you sure?");
+    if (!confirm) return;
 
-    const matchesStatus = filterStatus === "all" || t.status === filterStatus;
-
-    let matchesDate = true;
-    const txDate = new Date(t.date);
-
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      matchesDate = txDate >= start && txDate <= end;
-    } else if (startDate) {
-      matchesDate = txDate >= new Date(startDate);
-    } else if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      matchesDate = txDate <= end;
+    try {
+      await axios.delete(`${API_BASE_URL}/rentals/${id}`);
+      setRentals((prev) => prev.filter((r) => r.id !== id));
+      toast({ title: "Deleted", description: "Rental deleted." });
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "Delete failed." });
     }
+  };
 
-    return matchesSearch && matchesStatus && matchesDate;
-  });
+  const filteredRentals = rentals
+    .filter((r) =>
+      [r.id, r.user_id].some((v) =>
+        v?.toString().toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    )
+    .filter((r) => filterStatus === "all" || r.status === filterStatus)
+    .filter((r) => {
+      const rentalDate = new Date(r.date);
+      const from = startDate ? new Date(startDate) : null;
+      const to = endDate ? new Date(endDate + "T23:59:59") : null;
+      return (!from || rentalDate >= from) && (!to || rentalDate <= to);
+    })
+    .sort((a, b) => {
+      const get = (key: string, r: Rental) =>
+        key === "date"
+          ? new Date(r.date).getTime()
+          : key === "amount"
+          ? r.total
+          : r.rent_duration || 0;
+      const aVal = get(sortBy, a);
+      const bVal = get(sortBy, b);
+      return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+    });
 
-  filteredRentals = filteredRentals.sort((a, b) => {
-    if (sortBy === "date") {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
-      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
-    } else if (sortBy === "amount") {
-      return sortOrder === "asc" ? a.total - b.total : b.total - a.total;
-    } else if (sortBy === "duration") {
-      const durationA = a.rentDuration || 0;
-      const durationB = b.rentDuration || 0;
-      return sortOrder === "asc" ? durationA - durationB : durationB - durationA;
-    }
-    return 0;
-  });
+  const isOverdue = (date: string, duration = 30) => {
+    const due = new Date(date);
+    due.setDate(due.getDate() + duration);
+    return new Date() > due;
+  };
 
-  // Auth check
-  if (!user || user.role !== "admin") {
-    navigate("/login");
-    return null;
-  }
+  useEffect(() => {
+    if (user?.role === "admin") fetchRentals();
+    else navigate("/login");
+  }, [user]);
 
-  // Loading state
   if (loading) {
     return (
       <AdminDashboard>
-        <div className="p-6 flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      </AdminDashboard>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <AdminDashboard>
-        <div className="p-6 text-red-500 text-center">{error}</div>
+        <div className="p-10 text-center">Loading...</div>
       </AdminDashboard>
     );
   }
@@ -234,168 +158,149 @@ const RentManagement = () => {
   return (
     <AdminDashboard>
       <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold flex items-center">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-semibold flex items-center">
             <Clock className="mr-2" /> Rental Management
-          </h1>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate("/admin/reports")}>
-              View Reports
-            </Button>
-          </div>
+          </h2>
+          <Button onClick={fetchRentals}>Refresh</Button>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-4 border-b font-medium">Filters</div>
-          <div className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                <Input
-                  placeholder="Search by rental ID or user..."
-                  className="pl-10"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Status</label>
-                <select
-                  className="w-full p-2 border rounded-md"
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                >
-                  <option value="all">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="completed">Returned</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Start Date</label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                  <Input type="date" className="pl-10" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">End Date</label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                  <Input type="date" className="pl-10" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <Input
+            placeholder="Search by ID or User ID"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <select
+            className="border rounded px-2 py-2"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="all">All</option>
+            <option value="pending">Pending</option>
+            <option value="completed">Returned</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-gray-500 border-b">
-                  <th className="px-6 py-3">Rental ID</th>
-                  <th className="px-6 py-3">User ID</th>
-                  <th className="px-6 py-3">
-                    <button onClick={() => toggleSort("date")} className="flex items-center">
-                      Start Date <ArrowUpDown size={14} className="ml-1" />
-                    </button>
-                  </th>
-                  <th className="px-6 py-3">
-                    <button onClick={() => toggleSort("duration")} className="flex items-center">
-                      Duration <ArrowUpDown size={14} className="ml-1" />
-                    </button>
-                  </th>
-                  <th className="px-6 py-3">Due Date</th>
-                  <th className="px-6 py-3">
-                    <button onClick={() => toggleSort("amount")} className="flex items-center">
-                      Amount <ArrowUpDown size={14} className="ml-1" />
-                    </button>
-                  </th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3">Actions</th>
+        <div className="overflow-auto rounded shadow bg-white">
+          <table className="w-full text-sm">
+           <thead>
+  <tr className="bg-gray-100 text-left">
+    <th className="p-3">ID</th>
+    <th className="p-3">User ID</th>
+    <th className="p-3">Product ID</th>
+    <th className="p-3">Start Date</th>
+    <th className="p-3">Duration</th>
+    <th className="p-3">Status</th>
+    <th className="p-3">Amount</th>
+    <th className="p-3">Type</th>
+    <th className="p-3">User Info</th>
+    <th className="p-3">Product Info</th>
+    <th className="p-3">Actions</th>
+  </tr>
+</thead>
+
+            <tbody>
+              {filteredRentals.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-4">
+                    No rentals found.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredRentals.map((rental) => {
-                  const overdue = rental.status === "pending" && isOverdue(rental.date, rental.rentDuration);
-                  return (
-                    <tr key={rental.id} className={`border-b ${overdue ? "bg-red-50" : ""}`}>
-                      <td className="px-6 py-4">{rental.id}</td>
-                      <td className="px-6 py-4">{rental.userId}</td>
-                      <td className="px-6 py-4">{formatDate(rental.date)}</td>
-                      <td className="px-6 py-4">{rental.rentDuration || 30} days</td>
-                      <td className="px-6 py-4">
-                        {calculateDueDate(rental.date, rental.rentDuration)}
-                        {overdue && <AlertCircle size={16} className="text-red-600 inline ml-2" />}
-                      </td>
-                      <td className="px-6 py-4 font-medium">{formatPrice(rental.total)}</td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-2 py-1 text-xs rounded-full ${
-                            rental.status === "completed"
-                              ? "bg-green-100 text-green-700"
-                              : rental.status === "pending"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {rental.status === "pending" ? "Pending" : rental.status === "completed" ? "Returned" : "Cancelled"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleViewDetails(rental)}>
-                            <Eye size={16} className="mr-1" /> View
-                          </Button>
-                          <Button variant="destructive" size="sm" onClick={() => handleDeleteRental(rental.id)}>
-                            <X size={16} className="mr-1" /> Delete
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {filteredRentals.length === 0 && (
-              <div className="text-center py-8 text-gray-500">No rentals found matching your criteria.</div>
-            )}
-          </div>
+              ) : (
+                filteredRentals.map((rental) => (
+                <tr key={rental.id}>
+  <td className="p-3">{rental.id}</td>
+  <td className="p-3">{rental.user_id}</td>
+  <td className="p-3">{rental.product_id}</td>
+  <td className="p-3">{new Date(rental.date).toLocaleDateString()}</td>
+  <td className="p-3">{rental.rent_duration || 30} days</td>
+  <td className="p-3">
+    <span className={`px-2 py-1 rounded text-xs ${
+      rental.status === "completed"
+        ? "bg-green-100 text-green-800"
+        : rental.status === "cancelled"
+        ? "bg-red-100 text-red-800"
+        : "bg-yellow-100 text-yellow-800"
+    }`}>
+      {rental.status}
+    </span>
+  </td>
+  <td className="p-3">₹{rental.total}</td>
+  <td className="p-3">{rental.type || "rent"}</td>
+
+  {/* User Info */}
+  <td className="p-3 text-sm">
+    <div>ID: {rental.user?.id}</div>
+    <div>Name: {rental.user?.name}</div>
+    <div>Email: {rental.user?.email}</div>
+    <div>Phone: {rental.user?.phone}</div>
+  </td>
+
+  {/* Product Info */}
+  <td className="p-3 text-sm">
+    <div>ID: {rental.product?.id}</div>
+    <div>Name: {rental.product?.name}</div>
+    <div>Price: ₹{rental.product?.price}</div>
+  </td>
+
+  {/* Actions */}
+  <td className="p-3 flex gap-2">
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => {
+        setSelectedRental(rental);
+        setEditStatus(rental.status);
+        setShowModal(true);
+      }}
+    >
+      <Eye size={14} className="mr-1" /> View
+    </Button>
+    <Button
+      variant="destructive"
+      size="sm"
+      onClick={() => deleteRental(rental.id)}
+    >
+      <X size={14} className="mr-1" /> Delete
+    </Button>
+  </td>
+</tr>
+
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
 
-        {/* Modal */}
+        {/* Edit Modal */}
         {showModal && selectedRental && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-            <div className="bg-white p-6 rounded-md w-full max-w-md shadow-lg relative">
-              <button className="absolute top-2 right-2 text-gray-500" onClick={() => setShowModal(false)}>
-                <X size={20} />
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+            <div className="bg-white p-6 rounded shadow-md max-w-md w-full relative">
+              <button className="absolute top-2 right-2" onClick={() => setShowModal(false)}>
+                <X />
               </button>
-              <h2 className="text-xl font-semibold mb-4">Rental Details</h2>
-              <div className="space-y-2">
-                <p><strong>ID:</strong> {selectedRental.id}</p>
-                <p><strong>User ID:</strong> {selectedRental.userId}</p>
-                <p><strong>Start Date:</strong> {formatDate(selectedRental.date)}</p>
-                <p><strong>Duration:</strong> {selectedRental.rentDuration || 30} days</p>
-                <p><strong>Amount:</strong> {formatPrice(selectedRental.total)}</p>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Update Status</label>
-                  <select className="w-full p-2 border rounded-md" value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
-                    <option value="pending">Pending</option>
-                    <option value="completed">Returned</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-                </div>
-              </div>
-              <div className="mt-4 flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowModal(false)}>Close</Button>
-                <Button onClick={handleSaveStatus}>
-                  Save
+              <h3 className="text-lg font-bold mb-2">Update Status</h3>
+              <p className="mb-2 text-sm">Rental ID: {selectedRental.id}</p>
+              <select
+                className="w-full border px-3 py-2 rounded mb-4"
+                value={editStatus}
+                onChange={(e) => setEditStatus(e.target.value)}
+              >
+                <option value="pending">Pending</option>
+                <option value="completed">Returned</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowModal(false)}>
+                  Cancel
                 </Button>
+                <Button onClick={updateRentalStatus}>Save</Button>
               </div>
             </div>
           </div>
