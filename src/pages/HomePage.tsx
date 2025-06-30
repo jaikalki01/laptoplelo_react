@@ -32,10 +32,19 @@ const HomePage = () => {
     const loadProducts = async () => {
       try {
         const fetchedProducts = await fetchProducts();
-        setProductList(fetchedProducts);
-        setFilteredProducts(fetchedProducts);
+        console.log("Fetched products:", fetchedProducts);
+        if (Array.isArray(fetchedProducts)) {
+          setProductList(fetchedProducts);
+          setFilteredProducts(fetchedProducts);
+        } else {
+          console.error("Expected an array of products");
+          setProductList([]);
+          setFilteredProducts([]);
+        }
       } catch (error) {
-        console.error('Error fetching products:', error);
+        console.error("Error fetching products:", error);
+        setProductList([]);
+        setFilteredProducts([]);
       }
     };
 
@@ -43,14 +52,21 @@ const HomePage = () => {
   }, []);
 
   useEffect(() => {
-    const filtered = activeTab === "all"
-      ? productList 
-      : activeTab === "both"
-      ? productList.filter(p => p.type === "both")
-      : productList.filter(p => p.type === activeTab);
-    
+    const filtered =
+      activeTab === "all"
+        ? productList
+        : activeTab === "both"
+        ? productList.filter((p) => p.type === "both")
+        : productList.filter((p) => p.type === activeTab);
+
     setFilteredProducts(filtered);
   }, [activeTab, productList]);
+
+  const renderProducts = () =>
+    Array.isArray(filteredProducts) &&
+    filteredProducts.map((product) => (
+      <ProductCard key={product.id} product={product} />
+    ));
   
 
   const features = [

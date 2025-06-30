@@ -1,9 +1,10 @@
-export const BASE_URL = "http://localhost:8001"; // or use import.meta.env.VITE_API_URL if using .env
+export const BASE_URL = "http://localhost:8000"; // Or use import.meta.env.VITE_API_URL for env-based config
 
 const apiRoutes = {
   auth: {
     login: `${BASE_URL}/auth/login`,
     register: `${BASE_URL}/auth/register`,
+    signup: `${BASE_URL}/users/signup`, // ✅ Signup endpoint
     logout: `${BASE_URL}/auth/logout`,
     password: `${BASE_URL}/users/change-password`,
   },
