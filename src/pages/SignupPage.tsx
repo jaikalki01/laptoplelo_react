@@ -15,6 +15,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Eye, EyeOff } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { BASE_URL } from "@/routes";
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -63,19 +64,21 @@ const SignupPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://127.0.0.1:8001/users/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          email,
-          password,
-          role: "user",
-          kyc_verified: false,
-        }),
-      });
+const response = await fetch(`${BASE_URL}/users/signup`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    name,
+    email,
+    password,
+    role: "user",
+    kyc_verified: false,
+  }),
+});
+
+
 
       if (!response.ok) {
         const errorData = await response.json();
