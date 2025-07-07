@@ -15,9 +15,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import UserSidebar from "./UserSidebar";
-
+import { BASE_URL } from "@/routes";
 const UserPassword = () => {
   const { user } = useApp();
+  
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -34,7 +35,6 @@ const UserPassword = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
   
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001"; // place this at top of your file
 
   // If user is not logged in, redirect to login
   if (!user) {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AiOutlineDesktop } from 'react-icons/ai';
-
+import { BASE_URL } from "@/routes";
 const BuildYourPC = () => {
   const fields = [
     { name: 'processor', label: 'Processor' },
@@ -30,7 +30,7 @@ const BuildYourPC = () => {
     e.preventDefault();
 
     try {
-      const response = await fetch('http://localhost:8001/api/pcbuilds/', {
+      const response = await fetch(`${BASE_URL}/api/pcbuilds/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

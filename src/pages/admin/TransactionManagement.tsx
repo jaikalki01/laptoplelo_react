@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import AdminDashboard from "./AdminDashboard";
 import { Dialog } from "@/components/ui/dialog";
-
+import { BASE_URL } from "@/routes";
 const TransactionManagement = () => {
   const { user } = useApp();
   const navigate = useNavigate();
@@ -27,7 +27,7 @@ const TransactionManagement = () => {
   const limit = 10;
 
   useEffect(() => {
-    fetch(`http://127.0.0.1:8001/api/v1/transaction/list?skip=${(page - 1) * limit}&limit=${limit}`)
+    fetch(`${BASE_URL}/api/v1/transaction/list?skip=${(page - 1) * limit}&limit=${limit}`)
       .then((res) => res.json())
       .then((data) => setTransactions(data))
       .catch((err) => {

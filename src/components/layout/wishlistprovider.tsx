@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 const WishlistContext = createContext(null);
-import { BASE_URL } from "../../routes"
+import { BASE_URL } from '@/routes';
 
 export const WishlistProvider = ({ children }) => {
   const [wishlistCount, setWishlistCount] = useState(0);

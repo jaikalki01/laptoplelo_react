@@ -33,28 +33,35 @@ const ContactPage = () => {
       message,
     };
   
-    try {
-         const res = await fetch(`${BASE_URL}/contact`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, phone, message, formData }),
-      });
-  
-      if (res.ok) {
-        alert("Message sent successfully!"); 
-        setName("");
-        setEmail("");
-        setPhone("");
-        setMessage("");
-      } else {
-        const data = await res.json();
-        alert(data.detail || "Something went wrong.");
-      }
-    } catch (error) {
-      alert("Failed to send message. Please try again later.");
-    } finally {
-      setIsSubmitting(false);
-    }
+   try {
+  const res = await fetch(`${BASE_URL}/contact`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, phone, message }), // no need to send formData again
+  });
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = {};
+  }
+
+  if (res.ok || (res.status === 500 && data.message_sent)) {
+    alert("Message sent successfully!");
+    setName("");
+    setEmail("");
+    setPhone("");
+    setMessage("");
+  } else {
+    alert(data.detail || "Something went wrong.");
+  }
+} catch (error) {
+  alert("Failed to send message. Please try again later.");
+} finally {
+  setIsSubmitting(false);
+}
+
   };
   
   

@@ -23,12 +23,12 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Product } from "@/types";
 import ProductCard from "@/components/products/ProductCard";
-import { products as fetchProducts } from '../data/products';
+import { BASE_URL } from "@/routes";
 
 const ProductsPage = () => {
   const { type } = useParams<{ type?: string }>();
   const navigate = useNavigate();
-  const { products } = useApp();
+  const { products: contextProducts } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [sortBy, setSortBy] = useState("featured");
@@ -38,42 +38,55 @@ const ProductsPage = () => {
     max: 200000,
   });
   const [productList, setProductList] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const brands = [...new Set(productList.map((product) => product.brand))];
 
   useEffect(() => {
-    const loadProducts = async () => {
+    const fetchProducts = async () => {
       try {
-        const fetchedProducts = await fetchProducts();
-        setProductList(fetchedProducts);
+        const response = await fetch(`${BASE_URL}/products/`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const contentType = response.headers.get("content-type");
+        if (!contentType?.includes("application/json")) {
+          throw new Error("Received HTML instead of JSON");
+        }
 
-        let filtered = fetchedProducts;
-       if (type === 'sale' || type === 'rent' || type === 'both') {
-  filtered = fetchedProducts.filter(product => 
-    product.type === type || product.type === 'both'
-  );
-}
-
-        setFilteredProducts(filtered);
-      } catch (error) {
-        // Handle error
+        const data = await response.json();
+        
+        // Handle different response structures
+        const products = Array.isArray(data) ? data : 
+                         Array.isArray(data?.products) ? data.products : [];
+        
+        setProductList(products);
+        setFilteredProducts(products);
+      } catch (err) {
+        console.error("Fetch error:", err);
+        setError("Failed to load products. Please try again later.");
+      } finally {
+        setLoading(false);
       }
     };
 
-    loadProducts();
-  }, [type]);
+    fetchProducts();
+  }, []);
 
   useEffect(() => {
-    let filtered = productList;
+    let filtered = [...productList];
 
-    if (type === "sale" || type === "rent") {
-      filtered = productList.filter((product) => product.type === type);
-    } else if (type === "both") {
-      filtered = productList.filter((product) =>
-        ["sale", "rent"].includes(product.type)
+    // Filter by type
+    if (type === "sale" || type === "rent" || type === "both") {
+      filtered = filtered.filter(product => 
+        product.type === type || product.type === 'both'
       );
     }
 
+    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -84,17 +97,20 @@ const ProductsPage = () => {
       );
     }
 
+    // Filter by brands
     if (filterBrands.length > 0) {
       filtered = filtered.filter((product) =>
         filterBrands.includes(product.brand)
       );
     }
 
+    // Filter by price range
     filtered = filtered.filter(
       (product) =>
         product.price >= priceRange.min && product.price <= priceRange.max
     );
 
+    // Sort products
     switch (sortBy) {
       case "price-low":
         filtered.sort((a, b) => a.price - b.price);
@@ -115,10 +131,11 @@ const ProductsPage = () => {
     }
 
     setFilteredProducts(filtered);
-  }, [products, type, searchQuery, sortBy, filterBrands, priceRange]);
+  }, [productList, type, searchQuery, sortBy, filterBrands, priceRange]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    // Search is handled in the useEffect
   };
 
   const handleBrandToggle = (brand: string) => {
@@ -149,6 +166,26 @@ const ProductsPage = () => {
     { label: "For Rent", value: "rent" },
     { label: "Buy & Rent", value: "both" },
   ];
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12 text-red-500">
+          {error}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -264,6 +301,33 @@ const ProductsPage = () => {
 
                     <Separator />
 
+                    <div>
+                      <h3 className="font-medium mb-2">Price Range</h3>
+                      <div className="flex items-center gap-4">
+                        <Input
+                          type="number"
+                          placeholder="Min"
+                          value={priceRange.min}
+                          onChange={(e) => setPriceRange({
+                            ...priceRange,
+                            min: Number(e.target.value)
+                          })}
+                        />
+                        <span>to</span>
+                        <Input
+                          type="number"
+                          placeholder="Max"
+                          value={priceRange.max}
+                          onChange={(e) => setPriceRange({
+                            ...priceRange,
+                            max: Number(e.target.value)
+                          })}
+                        />
+                      </div>
+                    </div>
+
+                    <Separator />
+
                     <Button variant="outline" className="w-full" onClick={clearFilters}>
                       Clear Filters
                     </Button>
@@ -311,6 +375,33 @@ const ProductsPage = () => {
                     </label>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <h3 className="font-medium mb-4">Price Range</h3>
+              <div className="flex items-center gap-4">
+                <Input
+                  type="number"
+                  placeholder="Min"
+                  value={priceRange.min}
+                  onChange={(e) => setPriceRange({
+                    ...priceRange,
+                    min: Number(e.target.value)
+                  })}
+                />
+                <span>to</span>
+                <Input
+                  type="number"
+                  placeholder="Max"
+                  value={priceRange.max}
+                  onChange={(e) => setPriceRange({
+                    ...priceRange,
+                    max: Number(e.target.value)
+                  })}
+                />
               </div>
             </div>
 

@@ -9,7 +9,6 @@ import {
   Phone,
   ChevronRight,
 } from "lucide-react";
-import { useApp } from "@/context/AppContext";
 import { Button } from "@/components/ui/button";
 import {
   Tabs,
@@ -19,88 +18,102 @@ import {
 } from "@/components/ui/tabs";
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from "@/components/ui/carousel";
 import ProductCard from "@/components/products/ProductCard";
-import { products as fetchProducts } from '../data/products';
-import { Product } from '../types/index'; 
+import { BASE_URL } from "@/routes";
+
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  rental_price: number;
+   type: 'sale' | 'rent' | 'both'; 
+  image: string;
+  brand: string;
+   rental_duration?: number;  // <-- optional now
+  specs: {
+    processor: string;
+    memory: string;
+    storage: string;
+    display: string;
+    graphics: string;
+  };
+  available: boolean;
+  featured: boolean;
+}
+
 
 const HomePage = () => {
-  const { products } = useApp();
   const [productList, setProductList] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [activeTab, setActiveTab] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const loadProducts = async () => {
+    const fetchProducts = async () => {
       try {
-        const fetchedProducts = await fetchProducts();
-        console.log("Fetched products:", fetchedProducts);
-        if (Array.isArray(fetchedProducts)) {
-          setProductList(fetchedProducts);
-          setFilteredProducts(fetchedProducts);
-        } else {
-          console.error("Expected an array of products");
-          setProductList([]);
-          setFilteredProducts([]);
+        const response = await fetch(`${BASE_URL}/products/`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch: ${response.status}`);
         }
-      } catch (error) {
-        console.error("Error fetching products:", error);
-        setProductList([]);
-        setFilteredProducts([]);
+        
+        const contentType = response.headers.get("content-type");
+        if (!contentType?.includes("application/json")) {
+          throw new Error("Invalid response format");
+        }
+
+        const data = await response.json();
+        
+        // Handle different response structures
+        const products = Array.isArray(data) ? data : 
+                         Array.isArray(data?.products) ? data.products : [];
+        
+        setProductList(products);
+        setFilteredProducts(products);
+      } catch (err) {
+        console.error("Fetch error:", err);
+        setError("Failed to load products. Please refresh the page.");
+      } finally {
+        setLoading(false);
       }
     };
 
-    loadProducts();
+    fetchProducts();
   }, []);
 
   useEffect(() => {
-    const filtered =
-      activeTab === "all"
-        ? productList
-        : activeTab === "both"
-        ? productList.filter((p) => p.type === "both")
-        : productList.filter((p) => p.type === activeTab);
-
+    const filtered = activeTab === "all" 
+      ? productList 
+      : productList.filter(p => p.type === activeTab);
+    
     setFilteredProducts(filtered);
   }, [activeTab, productList]);
 
-  const renderProducts = () =>
-    Array.isArray(filteredProducts) &&
-    filteredProducts.map((product) => (
-      <ProductCard key={product.id} product={product} />
-    ));
-  
-
   const features = [
-    {
-      icon: <Laptop className="h-10 w-10 text-primary" />,
-      title: "Wide Selection",
-      description: "Choose from a variety of laptops for all your needs",
-    },
-    {
-      icon: <ShoppingBag className="h-10 w-10 text-primary" />,
-      title: "Buy or Rent",
-      description: "Flexible options to purchase or rent laptops",
-    },
-    {
-      icon: <Clock className="h-10 w-10 text-primary" />,
-      title: "Quick Delivery",
-      description: "Get your laptop delivered at your doorstep quickly",
-    },
-    {
-      icon: <ShieldCheck className="h-10 w-10 text-primary" />,
-      title: "Quality Assurance",
-      description: "All laptops are quality checked and certified",
-    },
-    {
-      icon: <CreditCard className="h-10 w-10 text-primary" />,
-      title: "Easy Payments",
-      description: "Multiple payment options for your convenience",
-    },
-    {
-      icon: <Phone className="h-10 w-10 text-primary" />,
-      title: "24/7 Support",
-      description: "Our support team is always available to help you",
-    },
+    { icon: <Laptop className="h-10 w-10 text-primary" />, title: "Wide Selection", description: "Choose from various laptops" },
+    { icon: <ShoppingBag className="h-10 w-10 text-primary" />, title: "Buy or Rent", description: "Flexible purchase options" },
+    { icon: <Clock className="h-10 w-10 text-primary" />, title: "Quick Delivery", description: "Fast shipping available" },
+    { icon: <ShieldCheck className="h-10 w-10 text-primary" />, title: "Quality Assurance", description: "Certified products" },
+    { icon: <CreditCard className="h-10 w-10 text-primary" />, title: "Easy Payments", description: "Multiple payment methods" },
+    { icon: <Phone className="h-10 w-10 text-primary" />, title: "24/7 Support", description: "Always available to help" },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12 text-red-500">
+        {error}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -113,8 +126,7 @@ const HomePage = () => {
                 Find Your Perfect Laptop
               </h1>
               <p className="text-lg text-gray-600 mb-6">
-                Buy or rent high-quality laptops with flexible options. Get the
-                technology you need without the hassle.
+                Buy or rent high-quality laptops with flexible options.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link to="/products">
@@ -150,9 +162,7 @@ const HomePage = () => {
         <div className="container mx-auto px-4">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold mb-2">Featured Products</h2>
-            <p className="text-gray-600">
-              Explore our collection of premium laptops
-            </p>
+            <p className="text-gray-600">Explore our premium laptops</p>
           </div>
 
           <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
@@ -165,46 +175,60 @@ const HomePage = () => {
               </TabsList>
             </div>
 
-            <TabsContent value="all" className="mt-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {filteredProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-            </TabsContent>
+            {filteredProducts.length > 0 ? (
+              <>
+                <TabsContent value="all" className="mt-0">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {filteredProducts.map((product) => (
+                      <ProductCard key={product.id} product={product} />
+                    ))}
+                  </div>
+                </TabsContent>
 
-            <TabsContent value="sale" className="mt-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {filteredProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-            </TabsContent>
+                <TabsContent value="sale" className="mt-0">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {filteredProducts
+                      .filter(p => p.type === "sale")
+                      .map((product) => (
+                        <ProductCard key={product.id} product={product} />
+                      ))}
+                  </div>
+                </TabsContent>
 
-            <TabsContent value="rent" className="mt-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {filteredProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-            </TabsContent>
+                <TabsContent value="rent" className="mt-0">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {filteredProducts
+                      .filter(p => p.type === "rent")
+                      .map((product) => (
+                        <ProductCard key={product.id} product={product} />
+                      ))}
+                  </div>
+                </TabsContent>
 
-            <TabsContent value="both" className="mt-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {filteredProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
+                <TabsContent value="both" className="mt-0">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {filteredProducts
+                      .filter(p => p.type === "both")
+                      .map((product) => (
+                        <ProductCard key={product.id} product={product} />
+                      ))}
+                  </div>
+                </TabsContent>
+              </>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                No products available
               </div>
-            </TabsContent>
+            )}
+
+            <div className="text-center mt-8">
+              <Link to="/products">
+                <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
+                  View All Products <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </Link>
+            </div>
           </Tabs>
-
-          <div className="text-center mt-8">
-            <Link to="/products">
-              <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
-                View All Products <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </Link>
-          </div>
         </div>
       </section>
 
@@ -213,17 +237,11 @@ const HomePage = () => {
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-2">Why Choose Us</h2>
-            <p className="text-gray-600">
-              We offer the best laptop buying and renting experience
-            </p>
+            <p className="text-gray-600">Best laptop buying experience</p>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <div
-                key={index}
-                className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow"
-              >
+              <div key={index} className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
                 <div className="mb-4">{feature.icon}</div>
                 <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
                 <p className="text-gray-600">{feature.description}</p>
@@ -237,42 +255,27 @@ const HomePage = () => {
       <section className="py-12 md:py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-2">What Our Customers Say</h2>
-            <p className="text-gray-600">
-              Don't just take our word for it, hear from our satisfied customers
-            </p>
+            <h2 className="text-3xl font-bold mb-2">Customer Reviews</h2>
+            <p className="text-gray-600">Hear from our customers</p>
           </div>
-
           <Carousel className="w-full max-w-4xl mx-auto">
             <CarouselContent>
               {[
                 {
-                  quote:
-                    "LaptopLelo made it so easy for me to rent a high-performance laptop for my project. Their service was prompt and the laptop was in excellent condition.",
+                  quote: "Great service and quality products!",
                   author: "Rahul Sharma",
-                  role: "Freelance Developer",
+                  role: "Developer"
                 },
                 {
-                  quote:
-                    "I purchased a MacBook from LaptopLelo and the experience was seamless. The price was competitive and delivery was quick.",
+                  quote: "Perfect laptop for my needs",
                   author: "Priya Patel",
-                  role: "Graphic Designer",
-                },
-                {
-                  quote:
-                    "Their rental options saved me a lot of money for my startup. I could get premium laptops for my team without a huge upfront investment.",
-                  author: "Vikram Singh",
-                  role: "Startup Founder",
-                },
+                  role: "Designer"
+                }
               ].map((testimonial, index) => (
                 <CarouselItem key={index}>
                   <div className="p-6 bg-white rounded-lg shadow text-center mx-2">
                     <div className="mb-4">
-                      <svg
-                        className="h-8 w-8 text-primary mx-auto"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
+                      <svg className="h-8 w-8 text-primary mx-auto" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
                       </svg>
                     </div>
@@ -292,19 +295,16 @@ const HomePage = () => {
       {/* CTA Section */}
       <section className="py-12 md:py-16 bg-primary text-white">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">
-            Ready to Find Your Perfect Laptop?
-          </h2>
+          <h2 className="text-3xl font-bold mb-4">Ready to Find Your Laptop?</h2>
           <p className="text-lg opacity-90 mb-6 max-w-2xl mx-auto">
-            Whether you want to buy or rent, we have the perfect laptop for your
-            needs. Get started today!
+            Get started with our flexible options today!
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/products">
               <Button variant="secondary">Shop Now</Button>
             </Link>
             <Link to="/contact">
-              <Button variant="outline" className="border-white text-white hover:bg-white/10">
+               <Button variant="secondary">
                 Contact Us
               </Button>
             </Link>

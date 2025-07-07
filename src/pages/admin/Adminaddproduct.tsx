@@ -3,6 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import AdminDashboard from './AdminDashboard';
 import { BASE_URL } from '@/routes';
 
+interface ProductImage {
+  _id: string;
+  url: string;
+  alt_text?: string;
+}
+
 const Adminaddproduct = () => {
     const { productId } = useParams();
     const navigate = useNavigate();
@@ -25,7 +31,7 @@ const Adminaddproduct = () => {
     });
     
     const [images, setImages] = useState<File[]>([]);
-    const [existingImages, setExistingImages] = useState([]);
+    const [existingImages, setExistingImages] = useState<ProductImage[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -69,8 +75,12 @@ const Adminaddproduct = () => {
                         isFeatured: product.isFeatured
                     });
 
-                    if (product.images) {
-                        setExistingImages(product.images);
+                    if (product.images && product.images.length > 0) {
+                        setExistingImages(product.images.map((img: any) => ({
+                            _id: img._id,
+                            url: img.url.startsWith('http') ? img.url : `${BASE_URL}/static/uploaded_images/${product.image}`,
+                            alt_text: img.alt_text
+                        })));
                     }
                 } catch (err) {
                     console.error('Error fetching product:', err);
@@ -109,16 +119,23 @@ const Adminaddproduct = () => {
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const files = Array.from(e.target.files);
-            if (files.length > 4) {
-                alert('Maximum 4 images allowed');
+            const totalImages = files.length + existingImages.length;
+            
+            if (totalImages > 4) {
+                alert('Maximum 4 images allowed (including existing ones)');
                 return;
             }
+            
             setImages(files);
         }
     };
 
     const removeExistingImage = (imageId: string) => {
         setExistingImages(prev => prev.filter(img => img._id !== imageId));
+    };
+
+    const removeNewImage = (index: number) => {
+        setImages(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -158,12 +175,15 @@ const Adminaddproduct = () => {
             });
 
             // Append existing image IDs to keep
-            existingImages.forEach(image => {
-                formDataToSend.append('existingImages', image._id);
-            });
+            const existingImageFilenames = existingImages.map(img => {
+  const segments = img.url.split('/');
+  return segments[segments.length - 1];
+});
+formDataToSend.append('existing_images', existingImageFilenames.join(','));
+
 
             const method = productId ? 'PUT' : 'POST';
-            const url = productId ? `${BASE_URL}/products/${productId}` : `${BASE_URL}/products`;
+            const url = productId ? `${BASE_URL}/products/${productId}` : `${BASE_URL}/products/`;
 
             const response = await fetch(url, {
                 method,
@@ -194,7 +214,9 @@ const Adminaddproduct = () => {
     if (isLoading) {
         return (
             <AdminDashboard>
-                <div className="loading">Loading product data...</div>
+                <div className="flex justify-center items-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
             </AdminDashboard>
         );
     }
@@ -299,7 +321,7 @@ const Adminaddproduct = () => {
 
                     {/* Images */}
                     <div>
-                        <label className="block mb-2">Images* (Max 4)</label>
+                        <label className="block mb-2">Images* (Max 4 total)</label>
                         <input
                             type="file"
                             multiple
@@ -312,12 +334,33 @@ const Adminaddproduct = () => {
                                 file:bg-blue-50 file:text-blue-700
                                 hover:file:bg-blue-100"
                         />
+                        
+                        {/* Preview of new images */}
                         {images.length > 0 && (
-                            <div className="mt-2 text-sm text-gray-500">
-                                {images.length} new image(s) selected
+                            <div className="mt-4">
+                                <h4 className="text-lg font-medium mb-2">New Images:</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {images.map((file, index) => (
+                                        <div key={index} className="relative">
+                                            <img 
+                                                src={URL.createObjectURL(file)} 
+                                                alt={`Preview ${index}`} 
+                                                className="w-full h-32 object-cover rounded"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeNewImage(index)}
+                                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
                         
+                        {/* Existing images */}
                         {existingImages.length > 0 && (
                             <div className="mt-4">
                                 <h4 className="text-lg font-medium mb-2">Existing Images:</h4>

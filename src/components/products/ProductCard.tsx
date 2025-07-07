@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Heart, ShoppingCart } from "lucide-react";
 import { Product } from "@/types";
@@ -16,85 +16,88 @@ interface ProductCardProps {
   product: Product;
 }
 
+type ProductType = "rent" | "sale" | "both";
+
 const ProductCard = ({ product }: ProductCardProps) => {
   const { fetchWishlistCount } = useWishlist();
-  const { fetchCartCount } = useCart();
+  const { fetchCart } = useCart();  // Updated
   const { addToCart } = useApp();
   const { toast } = useToast();
   const [imageUrl, setImageUrl] = useState<string>("");
   const [wishlist, setWishlist] = useState<number[]>([]);
   const [showRentPrice, setShowRentPrice] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (product.image) {
-      setImageUrl(`${BASE_URL}/static/uploaded_images/${product.image}`);
-    } else {
-      setImageUrl("/default-product.png");
-    }
-  }, [product.id, product.image]);
+    const url = product.image 
+      ? `${BASE_URL}/static/uploaded_images/${product.image}`
+      : "/default-product.png";
+    setImageUrl(url);
+  }, [product.image]);
 
-  const token = localStorage.getItem("token");
-  const headers = {
-    Authorization: `Bearer ${token}`,
-  };
-
-  useEffect(() => {
-    axios
-      .get(`${BASE_URL}/wishlist/wishlist`, { headers })
-      .then((res) => {
-        const productIds = res.data.wishlist.map((p: any) => Number(p.id));
-        setWishlist(productIds);
-      })
-      .catch((err) => {
-        console.error("Failed to load wishlist:", err);
-      });
+  const getAuthHeaders = useCallback(() => {
+    const token = localStorage.getItem("token");
+    return {
+      Authorization: `Bearer ${token}`,
+    };
   }, []);
 
-  const isInWishlist = (id: number) => wishlist.includes(id);
+  useEffect(() => {
+    const fetchWishlistStatus = async () => {
+      try {
+        const response = await axios.get(`${BASE_URL}/wishlist/wishlist`, {
+          headers: getAuthHeaders()
+        });
+        const productIds = response.data.wishlist.map((p: any) => Number(p.id));
+        setWishlist(productIds);
+      } catch (error) {
+        console.error("Failed to load wishlist:", error);
+      }
+    };
+
+    fetchWishlistStatus();
+  }, [getAuthHeaders]);
+
+  const isInWishlist = useCallback((id: number) => {
+    return wishlist.includes(id);
+  }, [wishlist]);
 
   const toggleWishlist = async (product: Product) => {
-    const productId: number = Number(product.id);
+    const productId = Number(product.id);
     const url = `${BASE_URL}/wishlist/wishlist/${productId}`;
 
     try {
+      setIsLoading(true);
       if (isInWishlist(productId)) {
-        await axios.delete(url, { headers });
-        setWishlist((prev) => prev.filter((id) => id !== productId));
+        await axios.delete(url, { headers: getAuthHeaders() });
+        setWishlist(prev => prev.filter(id => id !== productId));
       } else {
-        await axios.post(url, null, { headers });
-        setWishlist((prev) => [...prev, productId]);
+        await axios.post(url, null, { headers: getAuthHeaders() });
+        setWishlist(prev => [...prev, productId]);
       }
-      fetchWishlistCount();
+      await fetchWishlistCount();
     } catch (error: any) {
       console.error("Error updating wishlist:", error.response?.data || error.message);
+      toast({
+        title: "Error",
+        description: "Failed to update wishlist",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const getBadgeColor = () => {
-    switch (product.type) {
-      case "rent":
-        return "bg-blue-600";
-      case "sale":
-        return "bg-green-600";
-      case "both":
-        return "bg-purple-600";
-      default:
-        return "bg-gray-600";
-    }
+  const productTypeConfig = {
+    rent: { color: "bg-blue-600", text: "For Rent" },
+    sale: { color: "bg-green-600", text: "For Sale" },
+    both: { color: "bg-purple-600", text: "Buy or Rent" },
+    default: { color: "bg-gray-600", text: "" }
   };
 
-  const getBadgeText = () => {
-    switch (product.type) {
-      case "rent":
-        return "For Rent";
-      case "sale":
-        return "For Sale";
-      case "both":
-        return "Buy or Rent";
-      default:
-        return product.type;
-    }
+  const getBadgeConfig = (type: ProductType) => {
+    return productTypeConfig[type] || productTypeConfig.default;
   };
 
   const togglePriceDisplay = () => {
@@ -105,7 +108,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
   const handleAddToCart = async () => {
     try {
-      const type = product.type === "both" ? (showRentPrice ? "rent" : "sale") : product.type;
+      setIsLoading(true);
+      const type: ProductType = product.type === "both" 
+        ? (showRentPrice ? "rent" : "sale") 
+        : product.type as ProductType;
+      
       const rental_duration = type === "rent" ? 30 : 0;
       const price = type === "rent" ? product.rental_price : product.price;
 
@@ -117,45 +124,49 @@ const ProductCard = ({ product }: ProductCardProps) => {
         price
       };
 
-      const token = localStorage.getItem("token");
-      const response = await axios.post(`${BASE_URL}/cart`, payload, {
+      await axios.post(`${BASE_URL}/cart/`, payload, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...getAuthHeaders(),
           "Content-Type": "application/json",
         },
       });
 
-      if (response.status === 200) {
-        addToCart({
-          ...product,
-          type,
-          rental_duration,
-          price
-        });
-        
-        fetchCartCount();
-        
-        toast({
-          title: "Added to cart",
-          description: `${product.name} has been added to your cart`,
-          variant: "default",
-        });
-      }
+      addToCart({
+        ...product,
+        type,
+        rental_duration,
+        price
+      });
+
+      await fetchCart();  // Updated
+
+      toast({
+        title: "Added to cart",
+        description: `${product.name} has been added to your cart`,
+        variant: "default",
+      });
     } catch (error) {
+      console.error("Error adding to cart:", error);
       toast({
         title: "Error",
         description: "Failed to add item to cart",
         variant: "destructive",
       });
-      console.error("Error adding to cart:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const getButtonText = () => {
-    if (product.type === "rent") return "Rent Now";
-    if (product.type === "sale") return "Add to Cart";
-    return showRentPrice ? "Rent Now" : "Add to Cart";
+    switch (product.type) {
+      case "rent": return "Rent Now";
+      case "sale": return "Add to Cart";
+      case "both": return showRentPrice ? "Rent Now" : "Add to Cart";
+      default: return "Add to Cart";
+    }
   };
+
+  const { color: badgeColor, text: badgeText } = getBadgeConfig(product.type as ProductType);
 
   return (
     <Card
@@ -175,11 +186,12 @@ const ProductCard = ({ product }: ProductCardProps) => {
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src = "/default-product.png";
               }}
+              loading="lazy"
             />
           </div>
         </Link>
-        <Badge className={`absolute top-2 left-2 ${getBadgeColor()}`}>
-          {getBadgeText()}
+        <Badge className={`absolute top-2 left-2 ${badgeColor}`}>
+          {badgeText}
         </Badge>
         <Button
           size="icon"
@@ -189,6 +201,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
             e.preventDefault();
             toggleWishlist(product);
           }}
+          disabled={isLoading}
         >
           <Heart
             className={`h-5 w-5 ${
@@ -212,40 +225,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
           className={`flex justify-between items-center ${product.type === "both" ? "cursor-pointer" : ""}`}
           onClick={togglePriceDisplay}
         >
-          {product.type === "sale" ? (
-            <p className="font-bold text-lg">₹{product.price.toLocaleString()}</p>
-          ) : product.type === "rent" ? (
-            <div>
-              <p className="font-bold text-lg">
-                ₹{product.rental_price?.toLocaleString()}/month
-              </p>
-              <p className="text-xs text-gray-500">
-                ₹{product.price.toLocaleString()} outright
-              </p>
-            </div>
-          ) : (
-            <div>
-              {showRentPrice ? (
-                <>
-                  <p className="font-bold text-lg">
-                    ₹{product.rental_price?.toLocaleString()}/month
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Click to see purchase price
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="font-bold text-lg">
-                    ₹{product.price.toLocaleString()}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Click to see rental price
-                  </p>
-                </>
-              )}
-            </div>
-          )}
+          {renderPriceDisplay()}
         </div>
       </CardContent>
 
@@ -256,6 +236,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
             handleAddToCart();
           }}
           className="w-full bg-primary hover:bg-primary/90"
+          disabled={isLoading}
         >
           <ShoppingCart className="h-4 w-4 mr-2" />
           {getButtonText()}
@@ -263,6 +244,50 @@ const ProductCard = ({ product }: ProductCardProps) => {
       </CardFooter>
     </Card>
   );
+
+  function renderPriceDisplay() {
+    switch (product.type) {
+      case "sale":
+        return <p className="font-bold text-lg">₹{product.price.toLocaleString()}</p>;
+      case "rent":
+        return (
+          <div>
+            <p className="font-bold text-lg">
+              ₹{product.rental_price?.toLocaleString()}/month
+            </p>
+            <p className="text-xs text-gray-500">
+              ₹{product.price.toLocaleString()} outright
+            </p>
+          </div>
+        );
+      case "both":
+        return (
+          <div>
+            {showRentPrice ? (
+              <>
+                <p className="font-bold text-lg">
+                  ₹{product.rental_price?.toLocaleString()}/month
+                </p>
+                <p className="text-xs text-gray-500">
+                  Click to see purchase price
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-bold text-lg">
+                  ₹{product.price.toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Click to see rental price
+                </p>
+              </>
+            )}
+          </div>
+        );
+      default:
+        return null;
+    }
+  }
 };
 
 export default ProductCard;

@@ -36,7 +36,6 @@ const AddCouponModal = ({ isOpen, onClose, onSubmit }) => {
       return;
     }
 
-    const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001"; // place this at top of your file
 
     // Get the token from localStorage (or wherever you store it)
     const token = localStorage.getItem("token"); // Replace with your token retrieval method

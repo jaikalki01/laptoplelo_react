@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import AdminDashboard from "./AdminDashboard";
-
+import { BASE_URL } from "@/routes";
 const AdminSettings = () => {
   const { user } = useApp();
   const navigate = useNavigate();
@@ -112,7 +112,7 @@ const AdminSettings = () => {
       setIsLoading(false);
       return;
     }
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001"; // place this at top of your file
+ // place this at top of your file
 
     try {
     const response = await fetch(`${BASE_URL}/users/change-password`, {

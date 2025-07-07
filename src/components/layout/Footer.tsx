@@ -193,10 +193,10 @@ const Footer = () => {
               </p>
               <p>
                 <a
-                  href="mailto:info@laptoplelo.in"
+                  href="mailto:mumbaipcmart@gmail.com"
                   className="hover:text-primary"
                 >
-                  info@laptoplelo.in
+                  mumbaipcmart@gmail.com
                 </a>
               </p>
             </address>
