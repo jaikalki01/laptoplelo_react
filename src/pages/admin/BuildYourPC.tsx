@@ -61,7 +61,7 @@ const BuildYourPC = () => {
       setError(null);
       const token = localStorage.getItem("token");
 
-      const response = await fetch(`${BASE_URL}/api/pcbuilds`, {
+      const response = await fetch(`${BASE_URL}/api/pcbuilds/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

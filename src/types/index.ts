@@ -8,6 +8,7 @@ export interface Product {
    type: 'sale' | 'rent' | 'both'; 
   image: string;
   brand: string;
+   rental_duration?: number;  // <-- optional now
   specs: {
     processor: string;
     memory: string;
@@ -43,10 +44,12 @@ export interface Address {
 export interface CartItem {
   product: Product;
   quantity: number;
+   
 }
 
 export interface WishlistItem {
   product: Product;
+ 
   
 }
 

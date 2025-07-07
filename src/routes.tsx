@@ -1,4 +1,5 @@
-export const BASE_URL = "http://localhost:8000"; // Or use import.meta.env.VITE_API_URL for env-based config
+export const BASE_URL = "https://mumbaipcmart.com";
+// Or use import.meta.env.VITE_API_URL for env-based config
 
 const apiRoutes = {
   auth: {

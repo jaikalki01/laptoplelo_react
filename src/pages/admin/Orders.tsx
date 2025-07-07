@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import AdminDashboard from "./AdminDashboard";
 import axios from 'axios';
-
+import { BASE_URL } from "@/routes";
 interface Specs {
   processor: string;
   memory: string;
@@ -83,7 +83,7 @@ const Orders = () => {
         setLoading(true);
         const token = localStorage.getItem("token");
         const endpoint = user.role === 'admin' ? '/order/list' : '/order/my';
-        const response = await axios.get(`http://127.0.0.1:8001${endpoint}`, {
+        const response = await axios.get(`${BASE_URL}${endpoint}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -116,7 +116,7 @@ const Orders = () => {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.post('http://127.0.0.1:8001/order/create', {
+      await axios.post('${BASE_URL}/order/create', {
         product_id: parseInt(newOrder.product_id),
         rental_duration: parseInt(newOrder.rental_duration),
       }, {
@@ -131,7 +131,7 @@ const Orders = () => {
       });
 
       const endpoint = user?.role === 'admin' ? '/order/list' : '/order/my';
-      const response = await axios.get(`http://127.0.0.1:8001${endpoint}`, {
+      const response = await axios.get(`${BASE_URL}${endpoint}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

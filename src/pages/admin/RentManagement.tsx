@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import AdminDashboard from "./AdminDashboard";
 import axios from "axios";
-
+import { BASE_URL } from "@/routes";
 interface Rental {
   id: string;
   user_id: string;
@@ -31,7 +31,6 @@ interface Rental {
   };
 }
 
-const API_BASE_URL = "http://localhost:8001";
 
 const RentManagement = () => {
   const { user } = useApp();
@@ -54,7 +53,7 @@ const RentManagement = () => {
   const fetchRentals = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:8001/rentals/rentals");
+      const response = await axios.get(`${BASE_URL}/rentals/rentals`);
       setRentals(response.data);
     } catch (err) {
       setError("Failed to load rentals");

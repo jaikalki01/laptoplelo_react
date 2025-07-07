@@ -250,41 +250,7 @@ const AdminProfile = () => {
 
           {/* Recent Activity */}
 
-          <Card className="md:col-span-3">
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Your recent actions in the admin panel</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  { action: "Updated product listing", item: "Dell XPS 13", time: "Today, 9:32 AM" },
-                  { action: "Approved user KYC", item: "Jane Smith", time: "Yesterday, 4:15 PM" },
-                  { action: "Created new coupon", item: "SUMMER25", time: "Apr 16, 2024, 11:20 AM" },
-                  { action: "Marked order as complete", item: "Order #1234", time: "Apr 15, 2024, 2:45 PM" },
-                  { action: "Added new product", item: "HP Spectre x360", time: "Apr 14, 2024, 10:30 AM" },
-                ].map((activity, index) => (
-                  <div
-                    key={index}
-                    className="flex items-start pb-4 border-b last:border-0 last:pb-0"
-                  >
-                    <div className="p-2 rounded-full bg-primary/10 mr-4">
-                      <FileText size={18} className="text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between">
-                        <p className="font-medium">{activity.action}</p>
-                        <span className="text-sm text-gray-500">
-                          {activity.time}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-500">{activity.item}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+         
 
         </div>
       </div>

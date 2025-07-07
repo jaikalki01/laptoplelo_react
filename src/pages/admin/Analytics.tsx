@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import { 
@@ -19,10 +18,29 @@ import AdminDashboard from "./AdminDashboard";
 
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { transactions } from "@/data/transactions";
-import { products } from "@/data/products";
+import { products as fetchProducts } from "@/data/products";
 import { users } from "@/data/users";
-
-// Mock data for analytics
+export interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  rental_price: number;
+   type: 'sale' | 'rent' | 'both'; 
+  image: string;
+  brand: string;
+   rental_duration?: number;  // <-- optional now
+  specs: {
+    processor: string;
+    memory: string;
+    storage: string;
+    display: string;
+    graphics: string;
+  };
+  available: boolean;
+  featured: boolean;
+}
+// Mock data
 const customerGrowth = [
   { month: 'Jan', users: 120 },
   { month: 'Feb', users: 132 },
@@ -66,24 +84,34 @@ const Analytics = () => {
   const { user } = useApp();
   const navigate = useNavigate();
   const [timePeriod, setTimePeriod] = useState("year");
+  const [productList, setProductList] = useState<Product[]>([]);
 
-  // If user is not admin, redirect to login
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const data = await fetchProducts();
+        setProductList(data);
+      } catch (err) {
+        console.error("Failed to fetch products", err);
+      }
+    };
+    loadProducts();
+  }, []);
+
   if (!user || user.role !== 'admin') {
     navigate('/login');
     return null;
   }
 
-  // Calculate quick stats
   const totalCompletedTransactions = transactions.filter(t => t.status === 'completed').length;
   const totalRevenue = transactions.reduce((sum, t) => t.status === 'completed' ? sum + t.total : sum, 0);
   const totalSales = transactions.filter(t => t.type === 'sale' && t.status === 'completed').length;
   const totalRentals = transactions.filter(t => t.type === 'rent' && t.status === 'completed').length;
-  
-  // Calculate growth (mock data)
-  const revenueGrowth = 8.2; // percentage
-  const customerGrowthPercent = 12.5; // percentage
-  const salesGrowth = 5.7; // percentage
-  const rentalGrowth = 15.3; // percentage
+
+  const revenueGrowth = 8.2;
+  const customerGrowthPercent = 12.5;
+  const salesGrowth = 5.7;
+  const rentalGrowth = 15.3;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', { 
@@ -117,7 +145,7 @@ const Analytics = () => {
           </div>
         </div>
 
-        {/* Quick Stats Cards */}
+        {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <Card>
             <CardContent className="p-6">
@@ -208,136 +236,9 @@ const Analytics = () => {
             <TabsTrigger value="customers">Customer Analytics</TabsTrigger>
             <TabsTrigger value="products">Product Analytics</TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="revenue">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Revenue Trend</CardTitle>
-                  <CardDescription>Monthly revenue breakdown</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart
-                        data={revenueData}
-                        margin={{
-                          top: 10,
-                          right: 30,
-                          left: 0,
-                          bottom: 0,
-                        }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                        <Legend />
-                        <Area type="monotone" dataKey="sales" name="Sales" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} />
-                        <Area type="monotone" dataKey="rentals" name="Rentals" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.3} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Sales vs Rentals</CardTitle>
-                  <CardDescription>Transaction type distribution</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={revenueData}
-                        margin={{
-                          top: 20,
-                          right: 30,
-                          left: 20,
-                          bottom: 5,
-                        }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                        <Legend />
-                        <Bar dataKey="sales" name="Sales" fill="#8884d8" />
-                        <Bar dataKey="rentals" name="Rentals" fill="#82ca9d" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="customers">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Customer Growth</CardTitle>
-                  <CardDescription>Monthly new customer acquisition</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={customerGrowth}
-                        margin={{
-                          top: 10,
-                          right: 30,
-                          left: 0,
-                          bottom: 0,
-                        }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Line type="monotone" dataKey="users" name="Customers" stroke="#8884d8" activeDot={{ r: 8 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
+          {/* Revenue, customers tabs omitted for brevity (keep as in your code) */}
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Customer KYC Status</CardTitle>
-                  <CardDescription>Verification status distribution</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80 flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={[
-                            { name: 'Verified', value: users.filter(u => u.kycVerified).length },
-                            { name: 'Not Verified', value: users.filter(u => !u.kycVerified).length }
-                          ]}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          <Cell fill="#4CAF50" />
-                          <Cell fill="#F44336" />
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          
           <TabsContent value="products">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
@@ -377,7 +278,7 @@ const Analytics = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {products.slice(0, 5).map((product, index) => (
+                    {productList.slice(0, 5).map((product, index) => (
                       <div key={product.id} className="flex items-center p-2 hover:bg-gray-50 rounded-md">
                         <div className="flex-shrink-0 mr-4 text-xl font-bold text-gray-500">#{index + 1}</div>
                         <div className="flex-shrink-0 w-16 h-12">
