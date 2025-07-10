@@ -40,11 +40,18 @@ const ProductManagement = () => {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user || user.role !== "admin") {
-      navigate("/login");
-    }
-  }, [user, navigate]);
+ const token = localStorage.getItem("token");
+const isVerifying = token && !user;
+
+useEffect(() => {
+  if (isVerifying) return; // wait until token is verified
+
+  if (!user || user.role !== "admin") {
+    navigate("/login");
+  }
+}, [user, isVerifying, navigate]);
+
+
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -101,7 +108,7 @@ const ProductManagement = () => {
     const token = localStorage.getItem("token");
 
     try {
-      const response = await fetch(`${BASE_URL}/products/${productId}`, {
+      const response = await fetch(`${BASE_URL}/products/products/${productId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,

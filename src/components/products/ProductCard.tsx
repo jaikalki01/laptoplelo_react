@@ -29,12 +29,13 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const url = product.image 
-      ? `${BASE_URL}/static/uploaded_images/${product.image}`
-      : "/default-product.png";
-    setImageUrl(url);
-  }, [product.image]);
+useEffect(() => {
+  const url = product.image?.startsWith("/") 
+    ? `${BASE_URL}${product.image}`
+    : product.image || "/default-product.png";
+  setImageUrl(url);
+}, [product.image]);
+
 
   const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem("token");

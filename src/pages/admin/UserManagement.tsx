@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
 import {
   Users,
   Search,
@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import AdminDashboard from "./AdminDashboard";
 import { BASE_URL } from "@/routes";
+
+import { getAuthHeaders } from "@/utilis/authHeaders";
 
 
 interface User {
@@ -29,8 +31,10 @@ interface ApiResponse {
   totalPages: number;
 }
 const UserManagement = () => {
-  const { user } = useApp();
-  const navigate = useNavigate();
+ // or useAuth() if you're using AuthContext
+const navigate = useNavigate();
+
+
   const { toast } = useToast();
 
   const [users, setUsers] = useState<any[]>([]);
@@ -44,47 +48,38 @@ const UserManagement = () => {
   const usersPerPage = 10; // Number of users to show per page
 
   // Redirect if not admin
+const { user, isAuthReady } = useAuth();
+
+
 useEffect(() => {
-  if (!user) {
+  if (isAuthReady && (!user || user.role !== "admin" || user.email !== "mumbaipcmart@gmail.com")) {
     navigate("/login");
-    return;
   }
+}, [user, isAuthReady, navigate]);
 
-  // Check role first
-  if (user.role !== "admin") {
-    navigate("/login");
-    return;
-  }
+if (!isAuthReady) return null;
 
-  // Then check email
-  if (user.email !== "mumbaipcmart@gmail.com") {
-    navigate("/login");
-    return;
-  }
 
-}, [user, navigate]);
-;
 
   // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
-      if (!user || user.role !== "admin") return;
+    
 
       setIsLoading(true);
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get(`${BASE_URL}/users/`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          params: {
-            search_term: searchTerm,
-            role: filterRole,
-            kyc_status: filterKYC,
-            page: currentPage,
-            limit: usersPerPage,
-          },
-        });
+  headers: getAuthHeaders(),
+  params: {
+    search_term: searchTerm,
+    role: filterRole,
+    kyc_status: filterKYC,
+    page: currentPage,
+    limit: usersPerPage,
+  },
+});
+
 
         console.log("Fetched users:", response.data);
         // Ensure we set an array

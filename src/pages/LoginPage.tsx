@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useApp } from "@/context/AppContext";
+ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,45 +19,44 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { login: appLogin } = useApp();  // Assuming you have a context login
+  const { login: authLogin } = useAuth(); // Assuming you have a context login
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const from = location.state?.from || "/";
 
-  const performLogin = async (email: string, password: string) => {
-    try {
-      const formData = new URLSearchParams();
-      formData.append("username", email);
-      formData.append("password", password);
 
-      const response = await axios.post(`${BASE_URL}/users/login`, formData, {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      });
+const performLogin = async (email: string, password: string) => {
+  try {
+    const formData = new URLSearchParams();
+    formData.append("username", email);
+    formData.append("password", password);
 
-      const token = response.data.access_token;
-      localStorage.setItem("token", token);
+    const response = await axios.post(`${BASE_URL}/users/login`, formData, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    });
 
-      // Optionally: Call context login to update global state
-      if (appLogin) {
-        appLogin(email, password);
-      }
+    const token = response.data.access_token;
+    localStorage.setItem("token", token); // Redundant if you're using authLogin
 
-      return true;
-    } catch (error) {
-      console.error("Login failed:", error);
-      toast({
-        title: "Login failed",
-        description: "Invalid email or password.",
-        variant: "destructive",
-      });
-      return false;
+    if (authLogin) {
+      authLogin(token); // ✅ Store globally
     }
-  };
 
+    return true;
+  } catch (error) {
+    console.error("Login failed:", error);
+    toast({
+      title: "Login failed",
+      description: "Invalid email or password.",
+      variant: "destructive",
+    });
+    return false;
+  }
+};
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
