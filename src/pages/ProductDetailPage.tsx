@@ -87,41 +87,42 @@ const getProcessedImages = (product: Product): ProductImage[] => {
   const images: ProductImage[] = [];
   const imageSet = new Set<string>();
 
-  // Add main image if exists
+  const getFullUrl = (imgPath: string) =>
+    imgPath.startsWith("http") || imgPath.startsWith("/")
+      ? `${BASE_URL}${imgPath.replace(BASE_URL, "")}`
+      : `${BASE_URL}/static/uploaded_images/${imgPath}`;
+
+  // Main image
   if (product.image) {
-    const mainUrl = product.image.includes("://")
-      ? product.image
-      : `${BASE_URL}/static/uploaded_images/${product.image}`;
-    if (!imageSet.has(mainUrl)) {
-      images.push({ url: mainUrl, alt_text: `${product.name} - Main Image` });
-      imageSet.add(mainUrl);
+    const url = getFullUrl(product.image);
+    if (!imageSet.has(url)) {
+      images.push({ url, alt_text: `${product.name} - Main` });
+      imageSet.add(url);
     }
   }
 
-  // Add additional images from product.images
-  if (product.images && product.images.length > 0) {
+  // Additional images
+  if (product.images && Array.isArray(product.images)) {
     for (let i = 0; i < product.images.length; i++) {
       const img = product.images[i];
       const imgUrl = typeof img === "string" ? img : img.url;
-      const fullUrl = imgUrl.includes("://")
-        ? imgUrl
-        : `${BASE_URL}/static/uploaded_images/${imgUrl}`;
+      const url = getFullUrl(imgUrl);
 
-      if (!imageSet.has(fullUrl)) {
+      if (!imageSet.has(url)) {
         images.push({
-          url: fullUrl,
+          url,
           alt_text: typeof img === "string"
-            ? `${product.name} - View ${i + 1}`
-            : img.alt_text || `${product.name} - View ${i + 1}`
+            ? `${product.name} - Image ${i + 1}`
+            : img.alt_text || `${product.name} - Image ${i + 1}`
         });
-        imageSet.add(fullUrl);
+        imageSet.add(url);
       }
 
       if (images.length >= 4) break;
     }
   }
 
-  // Pad with default image if fewer than 4
+  // Fallback placeholder
   while (images.length < 4) {
     images.push({
       url: `${BASE_URL}/static/default-product-image.png`,
@@ -129,8 +130,9 @@ const getProcessedImages = (product: Product): ProductImage[] => {
     });
   }
 
-  return images.slice(0, 4);
+  return images;
 };
+
 
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 // AdminDashboard.tsx
 import { useState, ReactNode, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useApp } from "@/context/AppContext";
+ import { useAuth } from "@/context/AuthContext";
 import {
   Users,
   Package,
@@ -24,14 +24,21 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard = ({ children }: AdminDashboardProps) => {
-  const { user, logout } = useApp();
+
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  if (!user || user.role !== 'admin') {
-    navigate('/login');
-    return null;
+const { user, logout, isAuthReady } = useAuth();
+ // ⬅ make sure you're getting isAuthReady
+
+useEffect(() => {
+  if (isAuthReady && (!user || user.role !== "admin")) {
+    navigate("/login");
   }
+}, [user, isAuthReady, navigate]);
+
+if (!isAuthReady) return null; // ⬅ wait before rendering
+
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const handleLogout = () => {

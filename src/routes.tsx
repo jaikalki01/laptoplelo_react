@@ -1,4 +1,4 @@
-export const BASE_URL = "https://mumbaipcmart.com";
+export const BASE_URL = "http://127.0.0.1:8000";
 // Or use import.meta.env.VITE_API_URL for env-based config
 
 const apiRoutes = {
@@ -9,6 +9,7 @@ const apiRoutes = {
     logout: `${BASE_URL}/auth/logout`,
     password: `${BASE_URL}/users/change-password`,
   },
+
   users: {
     getAll: `${BASE_URL}/users`,
     getById: (id: string) => `${BASE_URL}/users/${id}`,

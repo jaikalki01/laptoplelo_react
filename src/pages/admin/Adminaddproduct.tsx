@@ -42,8 +42,10 @@ const Adminaddproduct = () => {
                 try {
                     const token = localStorage.getItem('token');
                     if (!token) {
-                        throw new Error('No authentication token found');
-                    }
+  alert("Login expired. Please login again.");
+  navigate('/login');
+  return;
+}
 
                     const response = await fetch(`${BASE_URL}/products/${productId}`, {
                         headers: {
@@ -95,6 +97,7 @@ const Adminaddproduct = () => {
         }
     }, [productId, navigate]);
 
+    
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
         const checked = (e.target as HTMLInputElement).checked;
@@ -161,13 +164,14 @@ const Adminaddproduct = () => {
             formDataToSend.append('rental_price', formData.rental_price.toString());
             formDataToSend.append('type', formData.type);
             formDataToSend.append('brand', formData.brand);
-            formDataToSend.append('processor', formData.specs.processor);
-            formDataToSend.append('ram', formData.specs.ram);
-            formDataToSend.append('storage', formData.specs.storage);
-            formDataToSend.append('display', formData.specs.display);
-            formDataToSend.append('graphics', formData.specs.graphics);
-            formDataToSend.append('availability', formData.availability.toString());
-            formDataToSend.append('isFeatured', formData.isFeatured.toString());
+       formDataToSend.append('processor', formData.specs.processor);
+formDataToSend.append('memory', formData.specs.ram); // ✅ renamed to memory
+formDataToSend.append('storage', formData.specs.storage);
+formDataToSend.append('display', formData.specs.display);
+formDataToSend.append('graphics', formData.specs.graphics);
+formDataToSend.append('available', formData.availability.toString()); // ✅
+formDataToSend.append('featured', formData.isFeatured.toString());    // ✅
+
 
             // Append new images
             images.forEach((image) => {
@@ -220,6 +224,29 @@ formDataToSend.append('existing_images', existingImageFilenames.join(','));
             </AdminDashboard>
         );
     }
+const handleDelete = async () => {
+  if (!window.confirm("Are you sure you want to delete this product?")) return;
+
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${BASE_URL}/products/${productId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to delete");
+    }
+
+    alert("Product deleted successfully");
+    navigate("/admin/products");
+  } catch (err: any) {
+    alert(err.message || "Error deleting product");
+  }
+};
 
     return (
         <AdminDashboard>
@@ -473,15 +500,27 @@ formDataToSend.append('existing_images', existingImageFilenames.join(','));
                     </div>
 
                     {/* Submit Button */}
-                    <div className="pt-4">
-                        <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-                        >
-                            {isSubmitting ? 'Submitting...' : (productId ? 'Update Product' : 'Add Product')}
-                        </button>
-                    </div>
+                    {/* Submit + Delete Buttons */}
+<div className="pt-4 space-y-2">
+  <button
+    type="submit"
+    disabled={isSubmitting}
+    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+  >
+    {isSubmitting ? 'Submitting...' : (productId ? 'Update Product' : 'Add Product')}
+  </button>
+
+  {productId && (
+  <button
+    onClick={handleDelete}
+    className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+  >
+    Delete Product
+  </button>
+)}
+
+</div>
+
                 </form>
             </div>
         </AdminDashboard>

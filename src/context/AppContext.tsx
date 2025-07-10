@@ -41,25 +41,36 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Check if user is logged in from local storage
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+useEffect(() => {
+  const token = localStorage.getItem('token');
 
-    // Get cart from local storage
-    const storedCart = localStorage.getItem('cart');
-    if (storedCart) {
-      setCart(JSON.parse(storedCart));
-    }
+  // If token exists but user not set yet, verify with backend
+  if (token && !user) {
+    axios
+      .get(`${BASE_URL}/users/auth`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      .then((res) => {
+        setUser(res.data);
+      })
+      .catch((err) => {
+        console.error("Token verification failed", err);
+        setUser(null);
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+      });
+  }
 
-    // Get wishlist from local storage
-    const storedWishlist = localStorage.getItem('wishlist');
-    if (storedWishlist) {
-      setWishlist(JSON.parse(storedWishlist));
-    }
-  }, []);
+  // Load cart/wishlist from storage
+  const storedCart = localStorage.getItem('cart');
+  const storedWishlist = localStorage.getItem('wishlist');
+
+  if (storedCart) setCart(JSON.parse(storedCart));
+  if (storedWishlist) setWishlist(JSON.parse(storedWishlist));
+}, []);
+
 
   // Save cart to local storage whenever it changes
   useEffect(() => {

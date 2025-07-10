@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useApp } from "@/context/AppContext";
+ import { useAuth } from "@/context/AuthContext";
 import {
   User,
   Mail,
@@ -25,9 +25,10 @@ import { useToast } from "@/components/ui/use-toast";
 import AdminDashboard from "./AdminDashboard";
 
 const AdminProfile = () => {
-  const { user, updateUser } = useApp();
+ // You can optionally use logout too
   const navigate = useNavigate();
   const { toast } = useToast();
+const { user, logout, updateUser } = useAuth();
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -68,21 +69,20 @@ const AdminProfile = () => {
     }));
   };
 
-  const handleSave = () => {
-    updateUser({
-      ...user,
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-    });
+ const handleSave = () => {
+  updateUser({
+    name: formData.name,
+    email: formData.email,
+    phone: formData.phone,
+  });
 
-    toast({
-      title: "Profile updated",
-      description: "Your profile has been updated successfully",
-    });
+  toast({
+    title: "Profile updated",
+    description: "Your profile has been updated successfully",
+  });
 
-    setIsEditing(false);
-  };
+  setIsEditing(false);
+};
 
   if (!user) return <div className="p-6">Loading...</div>;
 

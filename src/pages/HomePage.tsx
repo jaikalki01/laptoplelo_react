@@ -49,38 +49,48 @@ const HomePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch(`${BASE_URL}/products/`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch: ${response.status}`);
-        }
-        
-        const contentType = response.headers.get("content-type");
-        if (!contentType?.includes("application/json")) {
-          throw new Error("Invalid response format");
-        }
+useEffect(() => {
+  const fetchProducts = async () => {
+    try {
+      const token = localStorage.getItem('token');
 
-        const data = await response.json();
-        
-        // Handle different response structures
-        const products = Array.isArray(data) ? data : 
-                         Array.isArray(data?.products) ? data.products : [];
-        
-        setProductList(products);
-        setFilteredProducts(products);
-      } catch (err) {
-        console.error("Fetch error:", err);
-        setError("Failed to load products. Please refresh the page.");
-      } finally {
-        setLoading(false);
+      const response = await fetch(`${BASE_URL}/products/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status}`);
       }
-    };
 
-    fetchProducts();
-  }, []);
+      const contentType = response.headers.get("content-type");
+
+      if (!contentType?.includes("application/json")) {
+        throw new Error("Invalid response format");
+      }
+
+      const data = await response.json();
+
+      const products = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.products)
+        ? data.products
+        : [];
+
+      setProductList(products);
+      setFilteredProducts(products);
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setError("Failed to load products. Please refresh the page.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchProducts();
+}, []);
 
   useEffect(() => {
     const filtered = activeTab === "all" 
