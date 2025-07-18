@@ -52,10 +52,11 @@ const { user, isAuthReady } = useAuth();
 
 
 useEffect(() => {
-  if (isAuthReady && (!user || user.role !== "admin" || user.email !== "mumbaipcmart@gmail.com")) {
+  if (isAuthReady && (!user || user.role !== "admin")) {
     navigate("/login");
   }
 }, [user, isAuthReady, navigate]);
+
 
 if (!isAuthReady) return null;
 
