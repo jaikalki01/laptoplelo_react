@@ -40,16 +40,16 @@ const ProductManagement = () => {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
- const token = localStorage.getItem("token");
-const isVerifying = token && !user;
+  const token = localStorage.getItem("token");
+  const isVerifying = token && !user;
 
-useEffect(() => {
-  if (isVerifying) return; // wait until token is verified
+  useEffect(() => {
+    if (isVerifying) return; // wait until token is verified
 
-  if (!user || user.role !== "admin") {
-    navigate("/login");
-  }
-}, [user, isVerifying, navigate]);
+    if (!user || user.role !== "admin") {
+      navigate("/login");
+    }
+  }, [user, isVerifying, navigate]);
 
 
 
@@ -108,7 +108,7 @@ useEffect(() => {
     const token = localStorage.getItem("token");
 
     try {
-      const response = await fetch(`${BASE_URL}/products/${productId}`, {
+      const response = await fetch(`${BASE_URL}/products/products/${productId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -222,31 +222,31 @@ useEffect(() => {
                       <tr key={product.id} className="border-b hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <img
-                            src={`${BASE_URL}/static/uploaded_images/${product.image}`}
+                            src={`${BASE_URL}${product.image}`}
                             alt={product.name}
                             className="w-16 h-12 object-cover rounded"
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = "/default-product-image.png";
                             }}
                           />
+
                         </td>
                         <td className="px-6 py-4">{product.name}</td>
                         <td className="px-6 py-4">{product.brand}</td>
                         <td className="px-6 py-4">
                           <span
-                            className={`px-2 py-1 rounded-full text-xs ${
-                              product.type === "sale"
+                            className={`px-2 py-1 rounded-full text-xs ${product.type === "sale"
                                 ? "bg-blue-100 text-blue-700"
                                 : product.type === "rent"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-purple-100 text-purple-700"
-                            }`}
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-purple-100 text-purple-700"
+                              }`}
                           >
                             {product.type === "sale"
                               ? "For Sale"
                               : product.type === "rent"
-                              ? "For Rent"
-                              : "For Both"}
+                                ? "For Rent"
+                                : "For Both"}
                           </span>
                         </td>
                         <td className="px-6 py-4">{formatPrice(product.price)}</td>

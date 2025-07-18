@@ -29,6 +29,7 @@ interface Product {
 const EditProductPage = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
+    const [product, setProduct] = useState<any>(null);
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState<Omit<Product, 'id' | 'image'> & { images: File[] }>({
@@ -108,7 +109,7 @@ const EditProductPage = () => {
           featured: productData.featured,
           images: [],
         });
-        setCurrentImage(`${BASE_URL}/static/uploaded_images/${productData.image}`);
+        setCurrentImage(`${BASE_URL}${productData.image}`);
       } catch (error) {
         toast({
           title: "Error",
@@ -245,16 +246,22 @@ const EditProductPage = () => {
           {/* Current Image Preview */}
           <div>
             <label className="block mb-2">Current Image</label>
-            {currentImage && (
-              <img
-                src={currentImage}
-                alt="Current product"
-                className="w-32 h-32 object-cover rounded mb-4"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = "/default-product.png";
-                }}
-              />
-            )}
+<img
+  src={
+    currentImage.startsWith("http")
+      ? currentImage
+      : `${BASE_URL}${currentImage}`
+  }
+  alt="Product image"
+  className="w-16 h-12 object-cover rounded"
+  onError={(e) => {
+    (e.currentTarget as HTMLImageElement).src = "/default-product-image.png";
+  }}
+/>
+
+
+
+
           </div>
 
           {/* New Images Upload */}
