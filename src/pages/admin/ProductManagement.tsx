@@ -222,7 +222,7 @@ useEffect(() => {
                       <tr key={product.id} className="border-b hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <img
-                            src={`${BASE_URL}/static/uploaded_images/${product.image}`}
+                            src={`${BASE_URL}${product.image}`}
                             alt={product.name}
                             className="w-16 h-12 object-cover rounded"
                             onError={(e) => {

@@ -44,6 +44,7 @@ const Navbar = () => {
     { name: "Membership", path: "/membership" },
     { name: "Contact Us", path: "/contact" },
   ];
+  
 
   return (
     <header className={`sticky top-0 z-50 w-full transition-all duration-300 ${isScrolled ? "bg-white shadow-md" : "bg-white"}`}>
@@ -88,7 +89,7 @@ const Navbar = () => {
               <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="h-5 w-5" />
                 {cartCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 bg-primary">
+                  <Badge className="absolute -top-1 -right-1 h-9 w-5 bg-primary">
                     {cartCount}
                   </Badge>
                 )}
