@@ -108,7 +108,7 @@ useEffect(() => {
     const token = localStorage.getItem("token");
 
     try {
-      const response = await fetch(`${BASE_URL}/products/products/${productId}`, {
+      const response = await fetch(`${BASE_URL}/products/${productId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
