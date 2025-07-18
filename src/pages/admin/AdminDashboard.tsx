@@ -25,6 +25,7 @@ interface AdminDashboardProps {
 
 const AdminDashboard = ({ children }: AdminDashboardProps) => {
 
+
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -32,9 +33,11 @@ const { user, logout, isAuthReady } = useAuth();
  // ⬅ make sure you're getting isAuthReady
 
 useEffect(() => {
-  if (isAuthReady && (!user || user.role !== "admin")) {
-    navigate("/login");
-  }
+ if (isAuthReady && (!user || user.role !== "admin")) {
+  navigate("/login");
+  return null;
+}
+
 }, [user, isAuthReady, navigate]);
 
 if (!isAuthReady) return null; // ⬅ wait before rendering
