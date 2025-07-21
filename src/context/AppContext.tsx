@@ -35,6 +35,8 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: React.ReactNode }) => {
+  const [loading, setLoading] = useState(true); // ← ADD THIS
+
   const [filteredProducts, setFilteredProducts] = useState<Product[]>(products);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
@@ -44,13 +46,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 useEffect(() => {
   const token = localStorage.getItem('token');
 
-  // If token exists but user not set yet, verify with backend
   if (token && !user) {
     axios
       .get(`${BASE_URL}/users/auth`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
         setUser(res.data);
@@ -60,16 +59,21 @@ useEffect(() => {
         setUser(null);
         localStorage.removeItem("user");
         localStorage.removeItem("token");
+      })
+      .finally(() => {
+        setLoading(false); // ✅ Set loading to false after auth check
       });
+  } else {
+    setLoading(false); // ✅ No token? We're done loading
   }
 
-  // Load cart/wishlist from storage
+  // Load cart/wishlist
   const storedCart = localStorage.getItem('cart');
   const storedWishlist = localStorage.getItem('wishlist');
-
   if (storedCart) setCart(JSON.parse(storedCart));
   if (storedWishlist) setWishlist(JSON.parse(storedWishlist));
 }, []);
+
 
 
   // Save cart to local storage whenever it changes
@@ -300,32 +304,33 @@ const logout = () => {
   };
 
   return (
-    <AppContext.Provider value={{
-      products,
-      filteredProducts,
-      setFilteredProducts,
-      cart,
-      addToCart,
-      removeFromCart,
-      updateCartQuantity,
-      wishlist,
-      addToWishlist,
-      removeFromWishlist,
-      isInWishlist,
-      user,
-      login,
-      logout,
-      updateUserProfile,
-      updateUser, // Add the new method to the context value
-      updateUserPassword,
-      updateUserAddress,
-      isAuthenticated: !!user,
-      searchProducts,
-      filterProductsByType,
-    }}>
-      {children}
-    </AppContext.Provider>
-  );
+  <AppContext.Provider value={{
+    products,
+    filteredProducts,
+    setFilteredProducts,
+    cart,
+    addToCart,
+    removeFromCart,
+    updateCartQuantity,
+    wishlist,
+    addToWishlist,
+    removeFromWishlist,
+    isInWishlist,
+    user,
+    login,
+    logout,
+    updateUserProfile,
+    updateUser,
+    updateUserPassword,
+    updateUserAddress,
+    isAuthenticated: !!user,
+    searchProducts,
+    filterProductsByType,
+  }}>
+    {loading ? <div>Loading...</div> : children}  {/* ✅ WAIT until loading completes */}
+  </AppContext.Provider>
+);
+
 };
 
 export const useApp = () => {

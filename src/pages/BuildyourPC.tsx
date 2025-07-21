@@ -21,46 +21,51 @@ const BuildYourPC = () => {
 
   const [formData, setFormData] = useState({});
   const [modal, setModal] = useState({ isOpen: false, message: '', isError: false });
+const token = localStorage.getItem("token");
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    try {
-      const response = await fetch(`${BASE_URL}/api/pcbuilds/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+  try {
+    const response = await fetch(`${BASE_URL}/api/pcbuilds/`, {
+      method: 'POST',
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify(formData),
+    });
 
-      if (response.ok) {
-        setModal({
-          isOpen: true,
-          message: 'Build submitted successfully!',
-          isError: false,
-        });
-        setFormData({}); // Reset form data
-      } else {
-        setModal({
-          isOpen: true,
-          message: 'Failed to submit build.',
-          isError: true,
-        });
-      }
-    } catch (err) {
-      console.error('Error:', err);
+    if (response.ok) {
       setModal({
         isOpen: true,
-        message: 'Error submitting build.',
+        message: 'Build submitted successfully!',
+        isError: false,
+      });
+      setFormData({}); // Reset form
+    } else {
+      const errorData = await response.json();
+      console.error('Error details:', errorData); // Log FastAPI error
+      setModal({
+        isOpen: true,
+        message: 'Failed to submit build.',
         isError: true,
       });
     }
-  };
+  } catch (err) {
+    console.error('Error:', err);
+    setModal({
+      isOpen: true,
+      message: 'Error submitting build.',
+      isError: true,
+    });
+  }
+};
+
 
   const closeModal = () => {
     setModal({ isOpen: false, message: '', isError: false });

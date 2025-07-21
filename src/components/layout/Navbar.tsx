@@ -85,16 +85,16 @@ const Navbar = () => {
               <span className="z-10">Build Your PC</span>
             </Link>
 
-            <Link to="/cart">
-              <Button variant="ghost" size="icon" className="relative">
-                <ShoppingCart className="h-5 w-5" />
-                {cartCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-9 w-5 bg-primary">
-                    {cartCount}
-                  </Badge>
-                )}
-              </Button>
-            </Link>
+            <Link to="/cart" className="hidden md:block relative">
+            <Button variant="ghost" size="icon" aria-label="Cart">
+              <ShoppingCart className="h-5 w-5" />
+              {cartCount > 0 && (
+                <Badge className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 flex items-center justify-center">
+                  {cartCount}
+                </Badge>
+              )}
+            </Button>
+          </Link>
 
             <Link to="/wishlist">
               <Button variant="ghost" size="icon" className="relative">
