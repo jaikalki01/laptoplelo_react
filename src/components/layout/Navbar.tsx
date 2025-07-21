@@ -44,6 +44,7 @@ const Navbar = () => {
     { name: "Membership", path: "/membership" },
     { name: "Contact Us", path: "/contact" },
   ];
+  
 
   return (
     <header className={`sticky top-0 z-50 w-full transition-all duration-300 ${isScrolled ? "bg-white shadow-md" : "bg-white"}`}>
@@ -84,19 +85,16 @@ const Navbar = () => {
               <span className="z-10">Build Your PC</span>
             </Link>
 
-            <Link to="/cart">
-              <Button variant="ghost" size="icon" className="relative">
-                <ShoppingCart className="h-5 w-5" />
-                {Number(cartCount) > 0 && (
-                  <Badge
-                    className="absolute -top-2 -right-2 h-5 w-5 bg-primary text-white border-2 border-white flex items-center justify-center text-xs font-bold rounded-full"
-                    style={{ minWidth: 20, minHeight: 20, padding: 0 }}
-                  >
-                    {cartCount}
-                  </Badge>
-                )}
-              </Button>
-            </Link>
+            <Link to="/cart" className="hidden md:block relative">
+            <Button variant="ghost" size="icon" aria-label="Cart">
+              <ShoppingCart className="h-5 w-5" />
+              {cartCount > 0 && (
+                <Badge className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 flex items-center justify-center">
+                  {cartCount}
+                </Badge>
+              )}
+            </Button>
+          </Link>
 
             <Link to="/wishlist">
               <Button variant="ghost" size="icon" className="relative">
