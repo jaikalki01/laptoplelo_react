@@ -166,21 +166,38 @@ const CouponManagement = () => {
   }
 
   // Fetch coupons from FastAPI
-  const fetchCoupons = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.get(`${BASE_URL}/coupon/`);
-      setCoupons(response.data);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch coupons.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+const fetchCoupons = async () => {
+  setLoading(true);
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    toast({
+      title: "Unauthorized",
+      description: "Please login first.",
+      variant: "destructive",
+    });
+    navigate("/login");
+    return;
+  }
+
+  try {
+    const response = await axios.get(`${BASE_URL}/coupon/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    setCoupons(response.data);
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Failed to fetch coupons.",
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchCoupons();

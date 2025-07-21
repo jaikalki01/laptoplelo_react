@@ -28,6 +28,8 @@ import axios from 'axios';
 import { useCart } from "../components/layout/cartprovider";
 import { useWishlist } from "../components/layout/wishlistprovider";
 import { BASE_URL } from "@/routes";
+import { getAuthHeaders } from "@/utilis/authHeaders"; // ✅ adjust the path if needed
+
 
 interface ProductImage {
   url: string;
@@ -76,6 +78,7 @@ const ProductDetailPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [expandedDescription, setExpandedDescription] = useState(false);
   const token = localStorage.getItem("token");
+
   const headers = {
     Authorization: `Bearer ${token}`,
   };
@@ -136,40 +139,30 @@ const getProcessedImages = (product: Product): ProductImage[] => {
 
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchProduct = async () => {
       try {
-        setLoading(true);
-        setError(null);
-
-        // Fetch wishlist
-        const wishlistRes = await axios.get<{ wishlist: { id: string }[] }>(
-          `${BASE_URL}/wishlist/wishlist`, 
-          { headers }
-        );
-        setWishlist(wishlistRes.data.wishlist.map(p => p.id));
-
-        // Fetch product
-        const productRes = await fetch(`${BASE_URL}/products/${id}`);
-        if (!productRes.ok) {
-          throw new Error('Product not found');
+        const headers = getAuthHeaders();
+        const res = await axios.get(`${BASE_URL}/products/${id}`, { headers });
+        setProduct(res.data);
+      } catch (err: any) {
+        if (err.response?.status === 401) {
+          setError("Unauthorized access. Please login.");
+        } else if (err.response?.status === 404) {
+          setError("Product not found.");
+        } else {
+          setError("Something went wrong.");
         }
-        const productData: Product = await productRes.json();
-        setProduct(productData);
-        
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load product');
-        toast({
-          title: "Error",
-          description: "Failed to load product data",
-          variant: "destructive",
-        });
       } finally {
         setLoading(false);
       }
     };
 
-    if (id) fetchData();
+    if (id) fetchProduct();
   }, [id]);
+
+  if (loading) return <div className="p-10 text-center text-xl">Loading...</div>;
+  if (error) return <div className="p-10 text-center text-red-500">{error}</div>;
+  if (!product) return <div className="p-10 text-center text-red-500">Product Not Found</div>;
 
   // Zoom functionality
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -200,45 +193,71 @@ const getProcessedImages = (product: Product): ProductImage[] => {
     }
   };
 
-  const handleAddToCart = (productType: "sale" | "rent" = product?.type || "sale") => {
-    if (!product) return;
+ const handleAddToCart = (
+  productType: "sale" | "rent" = product?.type || "sale"
+) => {
+  if (!product) return;
 
-    const payload = {
-      product_id: product.id,
-      quantity,
-      rental_duration: productType === "sale" ? 0 : rental_duration,
-      type: productType
-    };
+  const payload = {
+    id: product.id,
+    name: product.name,
+    quantity,
+    type: productType,
+    rental_duration: productType === "sale" ? 0 : rental_duration,
+    price: product.price,
+    image: product.images?.[0] || "",
+  };
 
+  if (!token) {
+    // 👤 Guest Cart — Save in localStorage
+    const existingCart = JSON.parse(localStorage.getItem("cart") || "[]");
+    const updatedCart = [...existingCart];
+    const found = updatedCart.find((item) => item.id === payload.id);
+    if (found) found.quantity += quantity;
+    else updatedCart.push(payload);
+    localStorage.setItem("cart", JSON.stringify(updatedCart));
+
+    toast({
+      title: "Added to cart",
+      description: "Saved to local cart",
+    });
+  } else {
+    // 🔐 Logged-In Cart — Send to backend
     fetch(`${BASE_URL}/cart/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        product_id: payload.id,
+        quantity: payload.quantity,
+        rental_duration: payload.rental_duration,
+        type: payload.type,
+      }),
     })
       .then((res) => {
-        if (!res.ok) throw new Error('Failed to add to cart');
+        if (!res.ok) throw new Error("Failed to add to cart");
         return res.json();
       })
       .then(() => {
-        addToCart(product);
         toast({
-          title: productType === "rent" 
-            ? "Added to cart for rent" 
-            : "Added to cart for purchase"
+          title:
+            productType === "rent"
+              ? "Added to cart for rent"
+              : "Added to cart for purchase",
         });
-        fetchCartCount();
       })
       .catch((error) => {
         toast({
           title: "Error adding to cart",
           description: error.message,
-          variant: "destructive"
+          variant: "destructive",
         });
       });
-  };
+  }
+};
+
 
   const toggleWishlist = async () => {
     if (!product) return;

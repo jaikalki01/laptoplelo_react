@@ -50,18 +50,40 @@ const RentManagement = () => {
   const ITEMS_PER_PAGE = 10;
   const [currentPage, setCurrentPage] = useState(1);
 
-  const fetchRentals = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${BASE_URL}/rentals/rentals`);
-      setRentals(response.data);
-    } catch (err) {
-      setError("Failed to load rentals");
-      toast({ variant: "destructive", title: "Error", description: "Failed to fetch rental data" });
-    } finally {
-      setLoading(false);
+const fetchRentals = async () => {
+  try {
+    setLoading(true);
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      toast({
+        title: "Unauthorized",
+        description: "Please log in as admin",
+        variant: "destructive",
+      });
+      navigate("/login");
+      return;
     }
-  };
+
+    const response = await axios.get(`${BASE_URL}/rentals/rentals`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    setRentals(response.data);
+  } catch (err) {
+    setError("Failed to load rentals");
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "Failed to fetch rental data",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     if (user?.role === "admin") fetchRentals();

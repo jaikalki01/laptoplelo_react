@@ -16,12 +16,12 @@ import { useCart } from "../components/layout/cartprovider";
 import { BASE_URL } from "@/routes";
 
 interface CartItem {
-  id: number;
+  id?: number;
   product_id: number;
   quantity: number;
   rental_duration?: number;
   type: "sale" | "rent" | "both";
-  product: {
+  product?: {
     id: number;
     name: string;
     brand: string;
@@ -30,6 +30,11 @@ interface CartItem {
     type: "sale" | "rent" | "both";
     image: string;
   };
+  // For localStorage items
+  name?: string;
+  price?: number;
+  rental_price?: number;
+  image?: string;
 }
 
 const CartPage = () => {
@@ -39,12 +44,11 @@ const CartPage = () => {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(0);
-  const [finalTotal, setFinalTotal] = useState(0);
   const [error, setError] = useState('');
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { fetchCartCount } = useCart();
 
-  // Get authentication token
   const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -56,53 +60,54 @@ const CartPage = () => {
     };
   };
 
-  // Calculate cart totals
-  const subtotal = cartItems.reduce((total, item) => {
-    const price = item.type === 'rent' ? (item.product.rental_price || 0) * (item.rental_duration || 1) : item.product.price;
-    return total + (price * item.quantity);
-  }, 0);
-
-  const tax = subtotal * 0.18; // 18% GST
-  const shipping = subtotal > 10000 ? 0 : 500;
-  const total = subtotal + tax + shipping;
-
-  // Fetch cart items from API
-  const fetchCartItems = async () => {
-    try {
-      const headers = getAuthHeaders();
+  const calculateTotals = () => {
+    const calculatedSubtotal = cartItems.reduce((sum, item) => {
+      if (!item) return sum;
       
-      const response = await fetch(`${BASE_URL}/cart/`, {
-        headers: headers,
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch cart');
-
-      const data = await response.json();
+      if (item.product) {
+        const price = item.type === 'rent' 
+          ? (item.product.rental_price || 0) * (item.rental_duration || 1)
+          : item.product.price;
+        return sum + (price * item.quantity);
+      }
       
-      // Fetch product details for each cart item
-      const itemsWithProducts = await Promise.all(
-  data.map(async (item: any) => {
-    const productResponse = await fetch(`${BASE_URL}/products/${item.product_id}`);
-    if (!productResponse.ok) throw new Error('Failed to fetch product');
+      const price = item.type === 'rent'
+        ? (item.rental_price || 0) * (item.rental_duration || 1)
+        : (item.price || 0);
+      return sum + (price * item.quantity);
+    }, 0);
 
-    const product = await productResponse.json();
-
+    const calculatedTax = calculatedSubtotal * 0.18;
+    const calculatedShipping = calculatedSubtotal > 10000 ? 0 : 500;
+    const calculatedTotal = calculatedSubtotal + calculatedTax + calculatedShipping;
+    
     return {
-      ...item,
-      product: {
-        ...product,
-        type: item.type, // ✅ force the type from the cart item
-        rental_price:
-          item.type === 'rent' || item.type === 'both'
-            ? product.rental_price
-            : undefined,
-      },
+      subtotal: calculatedSubtotal,
+      tax: calculatedTax,
+      shipping: calculatedShipping,
+      total: calculatedTotal,
+      finalTotal: Math.max(0, calculatedTotal - discount)
     };
-  })
-);
+  };
 
+  const { subtotal, tax, shipping, total, finalTotal } = calculateTotals();
 
-      setCartItems(itemsWithProducts);
+  const fetchCartItems = async () => {
+    setIsLoading(true);
+    try {
+      if (!isAuthenticated) {
+        const localCart = JSON.parse(localStorage.getItem("cart") || "[]");
+        setCartItems(localCart);
+        return;
+      }
+
+      const headers = getAuthHeaders();
+      const response = await fetch(`${BASE_URL}/cart/`, { headers });
+      
+      if (!response.ok) throw new Error('Failed to fetch cart');
+      
+      const data = await response.json();
+      setCartItems(data);
     } catch (error) {
       console.error('Error fetching cart:', error);
       if (error instanceof Error && error.message === 'No authentication token found') {
@@ -114,29 +119,36 @@ const CartPage = () => {
           variant: "destructive",
         });
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchCartItems();
-    } else {
-      setCartItems([]);
-    }
+    fetchCartItems();
   }, [isAuthenticated]);
 
-  // Update item quantity in cart
   const updateCartQuantity = async (itemId: number, newQuantity: number) => {
     if (newQuantity < 1) return;
 
     try {
-      const headers = getAuthHeaders();
-      const item = cartItems.find(i => i.id === itemId);
+      setIsLoading(true);
+      const item = cartItems.find(i => i.id === itemId || i.product_id === itemId);
       if (!item) return;
 
+      if (!isAuthenticated) {
+        const updatedCart = cartItems.map(i => 
+          (i.product_id === item.product_id) ? { ...i, quantity: newQuantity } : i
+        );
+        localStorage.setItem("cart", JSON.stringify(updatedCart));
+        setCartItems(updatedCart);
+        return;
+      }
+
+      const headers = getAuthHeaders();
       const response = await fetch(`${BASE_URL}/cart/`, {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           product_id: item.product_id,
           quantity: newQuantity,
@@ -146,33 +158,38 @@ const CartPage = () => {
       });
 
       if (!response.ok) throw new Error('Failed to update cart');
-
-      fetchCartItems();
+      await fetchCartItems();
       fetchCartCount();
     } catch (error) {
       console.error('Error updating cart:', error);
-      if (error instanceof Error && error.message === 'No authentication token found') {
-        navigate('/login');
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update cart item",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Error",
+        description: "Failed to update cart item",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Remove item from cart
   const removeFromCart = async (itemId: number) => {
     try {
-      const headers = getAuthHeaders();
-      const item = cartItems.find(i => i.id === itemId);
+      setIsLoading(true);
+      const item = cartItems.find(i => i.id === itemId || i.product_id === itemId);
       if (!item) return;
 
+      if (!isAuthenticated) {
+        const updatedCart = cartItems.filter(i => i.product_id !== item.product_id);
+        localStorage.setItem("cart", JSON.stringify(updatedCart));
+        setCartItems(updatedCart);
+        fetchCartCount();
+        return;
+      }
+
+      const headers = getAuthHeaders();
       const response = await fetch(`${BASE_URL}/cart/remove`, {
         method: "POST",
-        headers: headers,
+        headers,
         body: JSON.stringify({
           product_id: item.product_id,
           type: item.type
@@ -180,8 +197,7 @@ const CartPage = () => {
       });
 
       if (!response.ok) throw new Error('Failed to remove item');
-
-      fetchCartItems();
+      await fetchCartItems();
       fetchCartCount();
       toast({
         title: "Removed",
@@ -189,19 +205,16 @@ const CartPage = () => {
       });
     } catch (error) {
       console.error('Error removing item:', error);
-      if (error instanceof Error && error.message === 'No authentication token found') {
-        navigate('/login');
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to remove item from cart",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Error",
+        description: "Failed to remove item from cart",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Apply coupon code
   const applyCoupon = async () => {
     if (!couponCode) {
       setError('Please enter a coupon code');
@@ -211,7 +224,7 @@ const CartPage = () => {
     try {
       const headers = getAuthHeaders();
       const response = await fetch(`${BASE_URL}/coupon/${couponCode}?total=${subtotal}`, {
-        headers: headers
+        headers
       });
       if (!response.ok) throw new Error('Invalid or expired coupon');
 
@@ -221,7 +234,6 @@ const CartPage = () => {
         : couponData.discount_value;
 
       setDiscount(discountAmount);
-      setFinalTotal(total - discountAmount);
       setError('');
       toast({
         title: "Coupon Applied",
@@ -244,7 +256,6 @@ const CartPage = () => {
     }
 
     setIsCheckingOut(true);
-    // In a real app, you would process payment here
     setTimeout(() => {
       toast({
         title: 'Order Placed Successfully',
@@ -253,6 +264,14 @@ const CartPage = () => {
       navigate('/orders');
     }, 2000);
   };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-12 text-center">
+        <p>Loading your cart...</p>
+      </div>
+    );
+  }
 
   if (cartItems.length === 0) {
     return (
@@ -272,11 +291,7 @@ const CartPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Button
-        variant="ghost"
-        className="mb-6"
-        onClick={() => navigate(-1)}
-      >
+      <Button variant="ghost" className="mb-6" onClick={() => navigate(-1)}>
         <ArrowLeft className="mr-2 h-4 w-4" /> Back
       </Button>
 
@@ -286,80 +301,73 @@ const CartPage = () => {
         <div className="lg:col-span-2">
           <div className="space-y-4">
             {cartItems.map((item) => (
-              <Card key={item.id} className="overflow-hidden">
+              <Card key={item.id || item.product_id} className="overflow-hidden">
                 <div className="flex flex-col sm:flex-row">
                   <div className="w-full sm:w-32 h-32 bg-gray-100">
                     <img
-                      src={`${BASE_URL}${item.product.image}`}
+                      src={`${BASE_URL}${item.product?.image || item.image}`}
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.onerror = null;
                         target.src = "/default-product-image.png";
                       }}
-                      alt={item.product.name}
+                      alt={item.product?.name || item.name}
                       className="w-full h-full object-cover"
                     />
                   </div>
                   <div className="flex-1 p-4">
                     <div className="flex flex-col sm:flex-row sm:justify-between">
                       <div>
-                        <Link to={`/product/${item.product.id}`}>
+                        <Link to={`/product/${item.product_id}`}>
                           <h3 className="font-semibold text-lg hover:text-primary transition-colors">
-                            {item.product.name}
+                            {item.product?.name || item.name}
                           </h3>
                         </Link>
-                        <p className="text-sm text-gray-500 mb-2">{item.product.brand}</p>
+                        <p className="text-sm text-gray-500 mb-2">
+                          {item.product?.brand || ''}
+                        </p>
                         <p className="font-medium">
                           {item.type === "rent"
-                            ? `₹${item.product.rental_price?.toLocaleString()}/mo`
-                            : `₹${item.product.price.toLocaleString()}`}
+                            ? `₹${(item.product?.rental_price || item.rental_price || 0).toLocaleString()}/mo`
+                            : `₹${(item.product?.price || item.price || 0).toLocaleString()}`}
                         </p>
                       </div>
 
                       <div className="mt-4 sm:mt-0">
                         <div className="flex items-center space-x-3">
-                          {item.type === "rent" ? (
-                            <div className="flex items-center gap-2">
-                              <span className="px-3 py-1 rounded border text-sm font-medium text-muted-foreground bg-muted">
-                                {item.quantity} item{item.quantity > 1 ? 's' : ''} For Rent
-                              </span>
-                            </div>
-                          ) : item.type === "sale" ? (
-                            <div className="flex items-center gap-2">
-                              <span className="px-3 py-1 rounded border text-sm font-medium text-muted-foreground bg-muted">
-                                {item.quantity} item{item.quantity > 1 ? 's' : ''} For Sale
-                              </span>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
-                              >
-                                –
-                              </Button>
-                              <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
-                              >
-                                +
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="px-3 py-1 rounded border text-sm font-medium text-muted-foreground bg-muted">
-                                {item.quantity} item{item.quantity > 1 ? 's' : ''} For Both
-                              </span>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2">
+                            <span className="px-3 py-1 rounded border text-sm font-medium text-muted-foreground bg-muted">
+                              {item.quantity} item{item.quantity > 1 ? 's' : ''} {item.type === 'rent' ? 'For Rent' : item.type === 'sale' ? 'For Sale' : 'For Both'}
+                            </span>
+                            {item.type === 'sale' && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => updateCartQuantity(item.id || item.product_id, item.quantity - 1)}
+                                  disabled={item.quantity <= 1}
+                                >
+                                  –
+                                </Button>
+                                <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => updateCartQuantity(item.id || item.product_id, item.quantity + 1)}
+                                >
+                                  +
+                                </Button>
+                              </>
+                            )}
+                          </div>
 
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-red-500 hover:text-red-700"
-                            onClick={() => removeFromCart(item.id)}
+                            onClick={() => removeFromCart(item.id || item.product_id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -406,6 +414,7 @@ const CartPage = () => {
                   <Button
                     onClick={applyCoupon}
                     variant="outline"
+                    disabled={!couponCode}
                   >
                     Apply
                   </Button>
