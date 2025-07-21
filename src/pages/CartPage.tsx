@@ -290,7 +290,7 @@ const CartPage = () => {
                 <div className="flex flex-col sm:flex-row">
                   <div className="w-full sm:w-32 h-32 bg-gray-100">
                     <img
-                      src={`${BASE_URL}/static/uploaded_images/${item.product.image}`}
+                      src={`${BASE_URL}${item.product.image}`}
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.onerror = null;

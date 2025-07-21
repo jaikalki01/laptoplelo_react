@@ -26,15 +26,32 @@ const TransactionManagement = () => {
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const limit = 10;
 
-  useEffect(() => {
-    fetch(`${BASE_URL}/api/v1/transaction/list?skip=${(page - 1) * limit}&limit=${limit}`)
-      .then((res) => res.json())
-      .then((data) => setTransactions(data))
-      .catch((err) => {
-        console.error("Failed to fetch transactions:", err);
-        toast({ title: "Error", description: "Could not load transactions" });
-      });
-  }, [page]);
+useEffect(() => {
+  fetch(`${BASE_URL}/api/v1/transaction/list?skip=${(page - 1) * limit}&limit=${limit}`, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  })
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error("Unauthorized or failed to fetch");
+      }
+      return res.json();
+    })
+    .then((data) => {
+      if (Array.isArray(data)) {
+        setTransactions(data);
+      } else {
+        throw new Error("Invalid response format");
+      }
+    })
+    .catch((err) => {
+      console.error("Failed to fetch transactions:", err);
+      toast({ title: "Error", description: err.message });
+      setTransactions([]); // Prevent further .filter crash
+    });
+}, [page]);
+
 
   const filtered = transactions.filter((t) =>
     t.transaction_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
