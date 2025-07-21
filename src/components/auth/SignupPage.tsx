@@ -191,7 +191,6 @@ const response = await fetch(`${BASE_URL}/users/signup`, {
                 </Link>
               </label>
             </div>
-            
             <Button
               type="submit"
               className="w-full bg-primary hover:bg-primary/90"
