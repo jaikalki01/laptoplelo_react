@@ -13,8 +13,8 @@ import ProductsPage from "@/pages/ProductsPage";
 import ProductDetailPage from "@/pages/ProductDetailPage";
 import CartPage from "@/pages/CartPage";
 import WishlistPage from "@/pages/WishlistPage";
-import LoginPage from "@/pages/LoginPage";
-import SignupPage from "@/pages/SignupPage";
+import LoginPage from "@/components/auth/LoginPage";
+import SignupPage from "@/components/auth/SignupPage";
 import ForgotPassword from "@/pages/ForgotPassword"
 import ResetPassword from "@/pages/ResetPassword"
 import ProfilePage from "@/pages/ProfilePage";
