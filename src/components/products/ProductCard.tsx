@@ -64,31 +64,43 @@ useEffect(() => {
     return wishlist.includes(id);
   }, [wishlist]);
 
-  const toggleWishlist = async (product: Product) => {
-    const productId = Number(product.id);
-    const url = `${BASE_URL}/wishlist/wishlist/${productId}`;
+ const toggleWishlist = async (product: Product) => {
+  const headers = getAuthHeaders();
+  const tokenMissing = !headers.Authorization;
 
-    try {
-      setIsLoading(true);
-      if (isInWishlist(productId)) {
-        await axios.delete(url, { headers: getAuthHeaders() });
-        setWishlist(prev => prev.filter(id => id !== productId));
-      } else {
-        await axios.post(url, null, { headers: getAuthHeaders() });
-        setWishlist(prev => [...prev, productId]);
-      }
-      await fetchWishlistCount();
-    } catch (error: any) {
-      console.error("Error updating wishlist:", error.response?.data || error.message);
-      toast({
-        title: "Error",
-        description: "Failed to update wishlist",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+  if (tokenMissing) {
+    toast({
+      title: "Login required",
+      description: "Please log in to add to wishlist.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  const productId = Number(product.id);
+  const url = `${BASE_URL}/wishlist/wishlist/${productId}`;
+
+  try {
+    setIsLoading(true);
+    if (isInWishlist(productId)) {
+      await axios.delete(url, { headers });
+      setWishlist(prev => prev.filter(id => id !== productId));
+    } else {
+      await axios.post(url, null, { headers });
+      setWishlist(prev => [...prev, productId]);
     }
-  };
+    await fetchWishlistCount();
+  } catch (error: any) {
+    console.error("Error updating wishlist:", error.response?.data || error.message);
+    toast({
+      title: "Error",
+      description: "Failed to update wishlist",
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const productTypeConfig = {
     rent: { color: "bg-blue-600", text: "For Rent" },
@@ -107,56 +119,46 @@ useEffect(() => {
     }
   };
 
-  const handleAddToCart = async () => {
-    try {
-      setIsLoading(true);
-      const type: ProductType = product.type === "both" 
-        ? (showRentPrice ? "rent" : "sale") 
-        : product.type as ProductType;
-      
-      const rental_duration = type === "rent" ? 30 : 0;
-      const price = type === "rent" ? product.rental_price : product.price;
+const handleAddToCart = (product: Product) => {
+  const existingCart = JSON.parse(localStorage.getItem("cart") || "[]");
 
-      const payload = {
+  const existingItem = existingCart.find(
+    (item: any) => item.product_id === product.id
+  );
+
+  let updatedCart;
+  if (existingItem) {
+    updatedCart = existingCart.map((item: any) =>
+      item.product_id === product.id
+        ? { 
+            ...item, 
+            quantity: item.quantity + 1,
+            price: item.price || product.price // Ensure price exists
+          }
+        : item
+    );
+  } else {
+    updatedCart = [
+      ...existingCart,
+      {
         product_id: product.id,
+        name: product.name,
+        price: product.price || 0, // Default to 0 if price is missing
+        rental_price: product.rental_price || 0,
         quantity: 1,
-        rental_duration,
-        type,
-        price
-      };
+        image: product.image || "/default-product.png",
+      },
+    ];
+  }
 
-      await axios.post(`${BASE_URL}/cart/`, payload, {
-        headers: {
-          ...getAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-      });
+  localStorage.setItem("cart", JSON.stringify(updatedCart));
+  fetchCart(); // Update cart context
+  toast({
+    title: "Added to cart",
+    description: `${product.name} has been added to your cart`,
+  });
+};
 
-      addToCart({
-        ...product,
-        type,
-        rental_duration,
-        price
-      });
-
-      await fetchCart();  // Updated
-
-      toast({
-        title: "Added to cart",
-        description: `${product.name} has been added to your cart`,
-        variant: "default",
-      });
-    } catch (error) {
-      console.error("Error adding to cart:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add item to cart",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const getButtonText = () => {
     switch (product.type) {
@@ -231,17 +233,18 @@ useEffect(() => {
       </CardContent>
 
       <CardFooter className="p-4 pt-0">
-        <Button
-          onClick={(e) => {
-            e.preventDefault();
-            handleAddToCart();
-          }}
-          className="w-full bg-primary hover:bg-primary/90"
-          disabled={isLoading}
-        >
-          <ShoppingCart className="h-4 w-4 mr-2" />
-          {getButtonText()}
-        </Button>
+      <Button
+  onClick={(e) => {
+    e.preventDefault();
+    handleAddToCart(product); // ✅ Pass product here
+  }}
+  className="w-full bg-primary hover:bg-primary/90"
+  disabled={isLoading}
+>
+  <ShoppingCart className="h-4 w-4 mr-2" />
+  {getButtonText()}
+</Button>
+
       </CardFooter>
     </Card>
   );

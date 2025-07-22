@@ -17,7 +17,7 @@ import LoginPage from "@/components/auth/LoginPage";
 import SignupPage from "@/components/auth/SignupPage";
 import ForgotPassword from "@/pages/ForgotPassword"
 import ResetPassword from "@/pages/ResetPassword"
-import ProfilePage from "@/pages/ProfilePage";
+
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import UserManagement from "@/pages/admin/UserManagement";
 import ProductManagement from "@/pages/admin/ProductManagement";
@@ -191,14 +191,7 @@ const App = () => (
                       </MainLayout>
                     }
                   />
-                  <Route
-                    path="/profile"
-                    element={
-                      <MainLayout>
-                        <ProfilePage />
-                      </MainLayout>
-                    }
-                  />
+                
 
                   {/* Admin Routes */}
                   <Route path="/admin" element={<AdminDashboard />} />
